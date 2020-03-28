@@ -1,0 +1,11 @@
+name: Dimensions
+main: me.xxastaspastaxx.dimensions.Main
+author: astaspasta
+description: Allow players to easily build portals to another world
+api-version: 1.13
+version: 1.0.12
+commands:
+   dimensions:
+      description: Main command
+      usage: /<command>
+      aliases: [dim]
