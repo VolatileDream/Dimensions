@@ -112,6 +112,6 @@ public class PortalLocations {
 			}
 			locations.put(portalClass.getPortalFromName(portalName), worlds);
 		}
-	}  
+	}
 
 }

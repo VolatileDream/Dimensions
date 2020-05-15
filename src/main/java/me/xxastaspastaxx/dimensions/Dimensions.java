@@ -11,6 +11,7 @@ import org.bukkit.entity.Player;
 
 import me.xxastaspastaxx.dimensions.portal.CustomPortal;
 import me.xxastaspastaxx.dimensions.portal.PortalClass;
+import me.xxastaspastaxx.dimensions.portal.PortalFrame;
 
 public class Dimensions {
 	
@@ -47,6 +48,10 @@ public class Dimensions {
 	
 	public static void addLocation(CustomPortal portal, Location loc) {
 		portalClass.addLocation(portal, loc);
+	}
+	
+	public static void removeFrame(CustomPortal portal, PortalFrame frame) {
+		portalClass.removeFrame(portal, frame);
 	}
 	
 	public static void removeLocation(CustomPortal portal, Location loc) {

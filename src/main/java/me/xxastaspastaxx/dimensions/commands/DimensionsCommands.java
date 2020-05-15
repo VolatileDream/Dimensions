@@ -122,7 +122,14 @@ public class DimensionsCommands implements CommandExecutor {
 				}
 			}
 			//Commands
-			
+			/*if (args[0].equalsIgnoreCase("reload")) {
+				if (getPermission(args[0].toLowerCase()).equalsIgnoreCase("none") || p.hasPermission(getPermission(args[0].toLowerCase()))) {
+					Main.getInstance().getPluginLoader().disablePlugin(Main.getInstance());
+					Main.getInstance().getPluginLoader().enablePlugin(Main.getInstance());
+					p.sendMessage("§aPlugin reloaded succesfully");
+					return true;
+				}
+			}*/
 		}
 		
 		String suggestion = getSuggestionInHelp(p, args[0]);

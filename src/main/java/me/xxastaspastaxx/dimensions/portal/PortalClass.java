@@ -3,14 +3,12 @@ package me.xxastaspastaxx.dimensions.portal;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.AbstractMap.SimpleEntry;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
-import java.util.Map.Entry;
 
 import org.bukkit.Bukkit;
-import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
@@ -21,90 +19,74 @@ import org.bukkit.entity.FallingBlock;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.block.BlockIgniteEvent.IgniteCause;
-import org.bukkit.plugin.Plugin;
-import org.bukkit.potion.PotionEffect;
-import org.bukkit.potion.PotionEffectType;
 
 import me.xxastaspastaxx.dimensions.Dimensions;
+import me.xxastaspastaxx.dimensions.Main;
 import me.xxastaspastaxx.dimensions.fileHandling.PortalLocations;
+import me.xxastaspastaxx.dimensions.portal.listeners.PortalListeners;
 
 
 public class PortalClass {
 	
+	int debugLevel;
 	int maxRadius;
 	World defaultWorld;
 	boolean enableParticles;
+	boolean enableMobs;
 	int teleportDelay;
-	
+
 	PortalLocations portalLocations;
+	PortalListeners portalListeners;
 	
 	boolean allowNetherPortal = true;
-	
+
 	ArrayList<CustomPortal> portals = new ArrayList<CustomPortal>();
+	HashMap<CustomPortal,ArrayList<PortalFrame>> frames = new HashMap<CustomPortal,ArrayList<PortalFrame>>();
 	
-	Plugin pl;
+	Main pl;
 	
-	HashMap<Player,Entry<CustomPortal,Long>> timer = new HashMap<Player,Entry<CustomPortal,Long>>();
+	ArrayList<LivingEntity> hold = new ArrayList<LivingEntity>();
+	//HashMap<LivingEntity,Entry<CustomPortal,Long>> timer = new HashMap<LivingEntity,Entry<CustomPortal,Long>>();
 	
-	public PortalClass(Plugin pl, int maxRadius, World defaultWorld, boolean portalParticles, int portalDelay) {
+	public PortalClass(Main pl, int maxRadius, World defaultWorld, boolean portalParticles, boolean teleportMobs, int portalDelay, int debugLevel) {
 		this.pl = pl;
+		
+		this.debugLevel = debugLevel;
 		this.maxRadius = maxRadius;
 		this.defaultWorld = defaultWorld;
 		this.enableParticles = portalParticles;
+		this.enableMobs = teleportMobs;
 		this.teleportDelay = portalDelay;
-		
-		Bukkit.getScheduler().scheduleSyncRepeatingTask(pl, new Runnable() {
-			
-			public void run() {
-				for (int i=0;i<timer.size();i++) {
-					Player p = (Player) timer.keySet().toArray()[i];
-					
-					if (isPortalAtLocation(p.getLocation().getBlock().getLocation())) {
-						p.addPotionEffect(new PotionEffect(PotionEffectType.CONFUSION, 200, Integer.MAX_VALUE,false,false,false));
-						CustomPortal portal = getPortalAtLocation(p.getLocation().getBlock().getLocation());
-						if (timer.get(p).getKey()==portal && ((System.currentTimeMillis()-timer.get(p).getValue())/1000)>=teleportDelay) {
-							portal.usePortal(p,false);
-							timer.remove(p);
-							i--;
-							continue;
-						}
-					}
-				}
-				if (enableParticles) {
-					for (CustomPortal portal : portals) {
-						if (portalLocations.getLocations(portal)==null) continue;
-						for (World world : portalLocations.getLocations(portal).keySet()) {
-							for (Location loc : portalLocations.getLocations(portal, world)) {
-								portal.spawnParticles(loc);
-							}
-						}
-					}
-				}
-			}
-		}, 20,20);
-		
-		
-		Bukkit.getScheduler().scheduleSyncDelayedTask(pl, new Runnable() {
-			
-			public void run() {
-				HashMap<CustomPortal,ArrayList<Location>> toRemove = new HashMap<CustomPortal,ArrayList<Location>>();
-				for (CustomPortal portal : portalLocations.getLocations().keySet()) {
-					toRemove.put(portal, new ArrayList<Location>());
-		        	for (World world : portalLocations.getLocations().get(portal).keySet()) {
-		        		for (Location location : portalLocations.getLocations().get(portal).get(world)) {
-		        			if (location==null) continue;
-			        		portal.lightPortal(location, IgniteCause.LIGHTNING, null, true);
-		        		}
-		        	}
-		        }
-			}
-		}, 20);
 		
 		Dimensions.portalClass = this;
 	}
 	
-	public void setPortalLocations(PortalLocations portalLocations) {
+	public Main getPlugin() {
+		return pl;
+	}
+	
+	public void setPortalLocations(PortalLocations portalLocations, PortalListeners portalListeners) {
+	  	debug("Loading locations",2);
+	  	int locs = 0;
+		for (CustomPortal portal : portalLocations.getLocations().keySet()) {
+        	for (World world : portalLocations.getLocations().get(portal).keySet()) {
+        		Iterator<Location> locIterator = portalLocations.getLocations().get(portal).get(world).iterator();
+			    while (locIterator.hasNext()) {
+			    	Location location = locIterator.next();
+					try {
+		        		portal.setFrameBlock(location, portal.isZAxis(location), true);
+		        		locs++;
+					} catch (NullPointerException e) {
+						locIterator.remove();
+						portalLocations.removeLocation(portal, location);
+					}
+			    }
+        	}
+        }
+		debug("Loaded "+locs+"/"+portalLocations.getLocations().size()+" locations",1);
+
 		this.portalLocations = portalLocations;
+		this.portalListeners = portalListeners;
 	}
 
 	public void setPortals(ArrayList<CustomPortal> portals) {
@@ -113,10 +95,11 @@ public class PortalClass {
 		for (CustomPortal portal : portals) {
 			if (!portal.isEnabled()) continue;
 			if (portal.getMaterial()==Material.OBSIDIAN) {
-				if (portal.getFrame()!=Material.NETHER_PORTAL || !portal.getWorld().getName().contentEquals("world_nether")) {
+				if (portal.getFrame()==Material.NETHER_PORTAL && portal.getWorld().getName().contentEquals("world_nether")) {
 					allowNetherPortal = false;
 				}
 			}
+			frames.put(portal, new ArrayList<PortalFrame>());
 		}
 	}
 	
@@ -130,10 +113,22 @@ public class PortalClass {
 	
 	//Check if any of the saved portals can be lit in this location
 	public boolean lightPortal(Location loc, IgniteCause cause, LivingEntity entity, Material lighter) {
+		debug("Attempting to light a portal at "+loc,2);
+		if ((entity instanceof Player) && pl.getWorldGuardFlags()!=null && !pl.getWorldGuardFlags().testState((Player) entity, loc,WorldGuardFlags.IgniteCustomPortal)) {
+			debug("Player does not have permission to light a portal at current location",2);
+			return false;
+		}
+		
 		for (CustomPortal portal : portals) {
 			if (!portal.isEnabled() || portal.getDisabledWorlds().contains(loc.getWorld()) || portal.getLighter()!=lighter) continue; 
-			if (portal.lightPortal(loc, cause, entity, false)) return true;
+			if (portal.lightPortal(loc, cause, entity, false)) {
+				debug("Portal lit at "+loc,2);
+				return true;
+			}
 		}
+		
+
+		debug("No portal could be found in "+loc,2);
 		return false;
 	}
 	
@@ -141,7 +136,7 @@ public class PortalClass {
 	public boolean isPortal(Location loc, boolean load) {
 		for (CustomPortal portal : portals) {
 			if (!portal.isEnabled() || portal.getDisabledWorlds().contains(loc.getWorld())) continue; 
-			if (portal.isPortal(loc, true, load)!=null) {
+			if (portal.isPortal(loc.getBlock().getLocation(), true, load)!=null) {
 				return true;
 			}
 		}
@@ -149,7 +144,11 @@ public class PortalClass {
 	}
 	
 	public boolean isPortalAtLocation(Location loc) {
-		if (getPortalAtLocation(loc)!=null) return true;
+		if (getPortalAtLocation(loc.getBlock().getLocation())!=null) {
+			debug("Check for portal at "+loc+" | Result = true",3);
+			return true;
+		}
+		debug("Check for portal at "+loc+" | Result = false",3);
 		return false;
 	}
 	
@@ -158,7 +157,7 @@ public class PortalClass {
 		CustomPortal result = null;
 		for (CustomPortal portal : portals) {
 			if (!portal.isEnabled() || portal.getDisabledWorlds().contains(loc.getWorld())) continue; 
-			if (portal.isPortal(loc, true, load)!=null) {
+			if (portal.isPortal(loc.getBlock().getLocation(), true, load)!=null) {
 				result = portal;
 				break;
 			}
@@ -168,7 +167,28 @@ public class PortalClass {
 	}
 
 	public CustomPortal getPortalAtLocation(Location loc) {
-		return portalLocations.getPortal(loc);
+		return portalLocations.getPortal(loc.getBlock().getLocation());
+	}
+	
+	public PortalFrame getFrameAtLocation(Location loc) {
+		for (CustomPortal portal : frames.keySet()) {
+			for (PortalFrame frame : frames.get(portal)) {
+				if (frame.getLocation().equals(loc.getBlock().getLocation())) {
+					debug("Check for frame at "+loc+" | Result = true",3);
+					return frame;
+				}
+			}
+		}
+		debug("Check for frame at "+loc+" | Result = false",3);
+		return null;
+	}
+	
+	public boolean addFrame(CustomPortal portal, PortalFrame frame) {
+		if (frame==null) return false;
+		debug("Added new frame",3);
+		if (frames.get(portal)==null) frames.put(portal, new ArrayList<PortalFrame>());
+		frames.get(portal).add(frame);
+		return true;
 	}
 	
 	public ArrayList<Location> getPortalLocations() {
@@ -179,8 +199,13 @@ public class PortalClass {
 		portalLocations.addLocation(portal, loc);
 	}
 	
+	public void removeFrame(CustomPortal portal, PortalFrame frame) {
+		portalLocations.removeLocation(portal, frame.getLocation().getBlock().getLocation());
+		frames.get(portal).remove(frame);
+	}
+	
 	public void removeLocation(CustomPortal portal, Location loc) {
-		portalLocations.removeLocation(portal, loc);
+		portalLocations.removeLocation(portal, loc.getBlock().getLocation());
 	}
 	
 	public int getMaxRadius() {
@@ -206,11 +231,12 @@ public class PortalClass {
 		if (portals==null) return null;
 		
 		Location closestLocation = null;
-		double closestDistance = 129;
+		double closestDistance = 65+128*portal.getRatio()*0.5;
 		for(Location location : portals) {
 			if (location.getBlock().getRelative(BlockFace.DOWN).getType()!=portal.material) continue;
+			double dist = location.distance(loc);
 			boolean hasFrame = false;
-			if ((portal.getFrame()==Material.WATER || portal.getFrame()==Material.LAVA) && location.getBlock().getType()==portal.getFrame()) {
+			if ((!portal.getFrame().isSolid() && portal.getFrame()!=Material.NETHER_PORTAL) && location.getBlock().getType()==portal.getFrame()) {
 				hasFrame = true;
 			} else {
 				for (Entity en : location.getWorld().getNearbyEntities(location, 1, 1, 1)) {
@@ -223,9 +249,10 @@ public class PortalClass {
 	            	}
 				}
 			}
-			if (hasFrame && closestDistance>location.distance(loc)) {
+
+			if (hasFrame && closestDistance>dist) {
 	    		closestLocation = location;
-	    		closestDistance = location.distance(loc);
+	    		closestDistance = dist;
 	    		
 	    	}
 		}
@@ -234,7 +261,9 @@ public class PortalClass {
 	}
 	
 	//Exit system because entering a portal must return you to your previous 
-	public World getReturnWorld(Player p, CustomPortal portal) {
+	public World getReturnWorld(LivingEntity p, CustomPortal portal) {
+		if (!(p instanceof Player)) return getDefaultWorld();
+		
 		File lastPortalFile = new File("plugins/Dimensions/PlayerData/"+p.getName()+"/LastPortal.yml");
 		YamlConfiguration lastPortalConfig = YamlConfiguration.loadConfiguration(lastPortalFile);
 		
@@ -270,7 +299,8 @@ public class PortalClass {
 		return getDefaultWorld();
 	}
 
-	public void addToUsedPortals(Player p, CustomPortal portal) {
+	public void addToUsedPortals(LivingEntity p, CustomPortal portal) {
+		if (!(p instanceof Player)) return;
 		File lastPortalFile = new File("plugins/Dimensions/PlayerData/"+p.getName()+"/LastPortal.yml");
 		YamlConfiguration lastPortalConfig = YamlConfiguration.loadConfiguration(lastPortalFile);
 
@@ -292,29 +322,25 @@ public class PortalClass {
 			e.printStackTrace();
 		}
 	}
-	
-	public void addToTimer(Player p, CustomPortal portal) {
-		if (p.getGameMode()==GameMode.CREATIVE || p.getGameMode()==GameMode.SPECTATOR) {
-			portal.usePortal(p,false);
-		} else {
-			SimpleEntry<CustomPortal,Long> entry = new SimpleEntry<CustomPortal, Long>(portal, System.currentTimeMillis());
-			timer.put(p, entry);
-		}
+
+	public boolean isOnHold(LivingEntity p) {
+		return hold.contains(p);
 	}
 	
-	public void removeFromTimer(Player p) {
-		timer.remove(p);
-        if (p.hasPotionEffect(PotionEffectType.CONFUSION)) {
-            p.removePotionEffect(PotionEffectType.CONFUSION);
-        }
+	public void addToHold(LivingEntity p) {
+		hold.add(p);
 	}
 	
-	public boolean isOnTimer(Player p) {
-		return timer.containsKey(p);
+	public void removeFromHold(LivingEntity p) {
+		hold.remove(p);
 	}
 	
 	public boolean isNetherPortalEnabled() {
 		return allowNetherPortal;
+	}
+	
+	public boolean enableMobsTeleportation() {
+		return enableMobs;
 	}
 	
 	public void findBestPathAndUse(Player p, World from, World to) {
@@ -342,5 +368,24 @@ public class PortalClass {
 				}
 			}
 		}
+	}
+	
+	public ArrayList<PortalFrame> getFrames() {
+		ArrayList<PortalFrame> result = new ArrayList<PortalFrame>();
+		
+		for (ArrayList<PortalFrame> list : frames.values()) {
+			result.addAll(list);
+		}
+		
+		return result;
+	}
+
+	public int getTeleportDelay() {
+		return teleportDelay;
+	}
+	
+	public void debug(String msg, int lvl) {
+		if (debugLevel>=lvl)
+		System.out.println(msg);
 	}
 }

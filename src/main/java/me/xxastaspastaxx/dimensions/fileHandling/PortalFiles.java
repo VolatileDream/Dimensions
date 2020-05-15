@@ -11,24 +11,26 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.bukkit.Bukkit;
-import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.WorldCreator;
 import org.bukkit.configuration.file.YamlConfiguration;
-import org.bukkit.entity.Entity;
-import org.bukkit.entity.FallingBlock;
 import org.bukkit.entity.Player;
-import org.bukkit.plugin.Plugin;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.Listener;
+import org.bukkit.event.player.PlayerJoinEvent;
+import org.bukkit.event.world.WorldSaveEvent;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
+import me.xxastaspastaxx.dimensions.Main;
 import me.xxastaspastaxx.dimensions.portal.CustomPortal;
 import me.xxastaspastaxx.dimensions.portal.PortalClass;
+import me.xxastaspastaxx.dimensions.portal.PortalFrame;
 import me.xxastaspastaxx.dimensions.portal.listeners.PortalListeners;
 
-public class PortalFiles {
+public class PortalFiles implements Listener {
 
 	PortalClass portalClass;
 	PortalListeners portalListeners;
@@ -36,9 +38,14 @@ public class PortalFiles {
 	PortalLocations portalLocations;
 	LocationsFile locationsFile;
 	
-	Plugin plugin;
+  	public static ArrayList<CustomPortal> createdPortals = new ArrayList<CustomPortal>();
+  	public static ArrayList<Material> lighters = new ArrayList<Material>();
+  	public static ArrayList<Material> frameMaterials = new ArrayList<Material>();
+  	public static ArrayList<Material> blocks = new ArrayList<Material>();
 	
-	public PortalFiles(Plugin pl) {
+	Main plugin;
+	
+	public PortalFiles(Main pl) {
 		
 		plugin = pl;
 	  	
@@ -47,9 +54,11 @@ public class PortalFiles {
 		YamlConfiguration portalSettings = YamlConfiguration.loadConfiguration(settings);
 		
 
+		portalSettings.addDefault("DebugLevel", 0);
 		portalSettings.addDefault("MaxRadius", 10);
 		portalSettings.addDefault("DefaultWorld", "world");
 		portalSettings.addDefault("EnableParticles", false);
+		portalSettings.addDefault("EnableMobsTeleportation", false);
 		portalSettings.addDefault("TeleportDelay", 4);
 		
 		
@@ -60,52 +69,53 @@ public class PortalFiles {
   	  	} catch (IOException e) {
 			e.printStackTrace();
 		}
-  	  	
+
+  	  	//int debugLevel = portalSettings.getInt("DebugLevel");
   	  	int maxRadius = portalSettings.getInt("MaxRadius");
   	  	World defaultWorld = Bukkit.getWorld(portalSettings.getString("DefaultWorld"));
   	  	boolean portalParticles = portalSettings.getBoolean("EnableParticles");
+  	  	boolean enableMobs = portalSettings.getBoolean("EnableMobsTeleportation");
   	  	int teleportDelay = portalSettings.getInt("TeleportDelay");
   	  	
-	  	portalClass = new PortalClass(pl, maxRadius, defaultWorld, portalParticles, teleportDelay);
+	  	portalClass = new PortalClass(pl, maxRadius, defaultWorld, portalParticles, enableMobs, teleportDelay, 0);
 	  	
-	  	ArrayList<CustomPortal> createdPortals = new ArrayList<CustomPortal>();
-	  	ArrayList<Material> lighters = new ArrayList<Material>();
-	  	ArrayList<Material> frameMaterials = new ArrayList<Material>();
-	  	ArrayList<Material> blocks = new ArrayList<Material>();
 	  	
 		//Create and register all portals
 		File portalFolder = new File("plugins/Dimensions/Portals");
 		if (!portalFolder.exists()) portalFolder.mkdir();
 		File[] portals = portalFolder.listFiles();
+		
+
+	  	portalClass.debug("Loading Portals...",2);
 		for (File portal : portals) {
 			if (portal.getName().contentEquals("portalLocations.json") || portal.getName().contains(" ")) continue;
 			
-			YamlConfiguration portalConfig = YamlConfiguration.loadConfiguration(portal);
-			
 			//Add strings added in new version that are missing and will crash plugin
 			fixOutdatedPortalFile(portal);
+
+			YamlConfiguration portalConfig = YamlConfiguration.loadConfiguration(portal);
 			
 			//Load portal settings
 			String name = portal.getName().replace(".yml", "");
 			
 			boolean enabled = portalConfig.getBoolean("Enable");
+			//if (!enabled) continue;
 			String displayName = portalConfig.getString("DisplayName");
 			
 			Material material = Material.matchMaterial(portalConfig.getString("Portal.Block.Material"));
 			String face = portalConfig.getString("Portal.Block.Face");
 			Material frame = Material.matchMaterial(portalConfig.getString("Portal.Frame"));
 			Material lighter = Material.matchMaterial(portalConfig.getString("Portal.Lighter"));
+			int minPortalWidth = portalConfig.getInt("Portal.MinWidth");
+			int minPortalHeight = portalConfig.getInt("Portal.MinHeight");
 			
-			String worldName = portalConfig.getString("World");
+			String worldName = portalConfig.getString("World.Name");
 			World world = Bukkit.getWorld(worldName);
 			if (!Bukkit.getServer().getWorlds().contains(world)) {
 				world = Bukkit.getServer().createWorld(new WorldCreator(worldName));
 			}
-			
-			String ratio = portalConfig.getString("Ratio");
-			
-			int minPortalWidth = portalConfig.getInt("MinPortalWidth");
-			int minPortalHeight = portalConfig.getInt("MinPortalHeight");
+			int worldHeight = portalConfig.getInt("World.MaxHeight");
+			String ratio = portalConfig.getString("World.Ratio");
 			
 			boolean buildExitPortal = portalConfig.getBoolean("BuildExitPortal");
 			boolean spawnOnAir = portalConfig.getBoolean("SpawnOnAir");
@@ -128,8 +138,11 @@ public class PortalFiles {
 			}
 			
 			//add the custom portal to the list so it can be used for later calculations
-			createdPortals.add(new CustomPortal(portalClass, name, enabled, displayName, material, face, frame, lighter, world, ratio, minPortalWidth, minPortalHeight, buildExitPortal, spawnOnAir, disabledWorlds, particlesColor, pl));
+			createdPortals.add(new CustomPortal(portalClass, name, enabled, displayName, material, face, frame, lighter, world, worldHeight, ratio, minPortalWidth, minPortalHeight, buildExitPortal, spawnOnAir, disabledWorlds, particlesColor, pl));
 		}
+
+	  	portalClass.debug("Loaded "+ createdPortals.size() +" portals",1);
+		
 		
 		for (Player p : Bukkit.getServer().getOnlinePlayers()) {
 			//This is used to return players to the previous world
@@ -167,30 +180,32 @@ public class PortalFiles {
 	        
 	        this.portalLocations = portalLocations;
 	        this.locationsFile = locationsFile;
-	        portalClass.setPortalLocations(portalLocations);
+	        portalClass.setPortalLocations(portalLocations,portalListeners);
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
         
-        /*=============================================================*/
+
+	    Bukkit.getServer().getPluginManager().registerEvents(this, pl);
 	}
 	
 	public void fixOutdatedPortalFile(File portal) {
 		YamlConfiguration portalConfig = YamlConfiguration.loadConfiguration(portal);
 		
 		portalConfig.addDefault("Enable", true);
-		portalConfig.addDefault("DisplayName", "&5Nether portal");
+		portalConfig.addDefault("DisplayName", "&SamplePortal");
 
-  	  	portalConfig.addDefault("Portal.Block.Material", "obsidian");
+  	  	portalConfig.addDefault("Portal.Block.Material", "stone");
   	  	portalConfig.addDefault("Portal.Block.Face", "all");
-  	  	portalConfig.addDefault("Portal.ParticlesColor", "75;0;130");
+  	  	portalConfig.addDefault("Portal.ParticlesColor", "75;75;75");
   	  	portalConfig.addDefault("Portal.Frame", "nether_portal");
   	  	portalConfig.addDefault("Portal.Lighter", "flint_and_steel");
-  	  	portalConfig.addDefault("World", "world_nether");
-  	  	portalConfig.addDefault("Ratio", "1:8");
-
-  	  	portalConfig.addDefault("MinPortalWidth", 4);
-  	  	portalConfig.addDefault("MinPortalHeight", 5);
+  	  	portalConfig.addDefault("Portal.MinWidth", 4);
+  	  	portalConfig.addDefault("Portal.MinHeight", 5);
+  	  	
+  	  	portalConfig.addDefault("World.Name", "world");
+  	  	portalConfig.addDefault("World.MaxHeight", 256);
+  	  	portalConfig.addDefault("World.Ratio", "1:1");
   	  	
   	  	portalConfig.addDefault("BuildExitPortal", true);
   	  	portalConfig.addDefault("SpawnOnAir", false);
@@ -253,27 +268,53 @@ public class PortalFiles {
 		return portalClass;
 	}
 	
+	public PortalListeners getPortalListeners() {
+		return portalListeners;
+	}
+	
 	public void onDisable() {
+		
 		try {
 			writeJSON(portalLocations, locationsFile);
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-		for (Location loc : portalClass.getPortalLocations()) {
-			loc.getChunk().load();
-			CustomPortal portal = portalClass.getPortalAtLocation(loc);
-			if (portal.getMaterial()==Material.WATER || portal.getMaterial()==Material.FIRE) {
-				loc.getBlock().setType(Material.AIR);
-			} else {
-				for (Entity en : loc.getWorld().getNearbyEntities(loc, 1, 1, 1)) {
-	        		if (!(en instanceof FallingBlock)) continue;
-	        		FallingBlock fallingBlock = (FallingBlock) en;
-	        		
-	            	if (fallingBlock.getBlockData().getMaterial()==portal.getFrame()) {
-	            		en.remove();
-	            	}
-	        	}
-			}
+		for (PortalFrame frame : portalClass.getFrames()) {
+			frame.getLocation().getBlock();
+			frame.remove();
+		}
+	}
+	
+	
+	@EventHandler
+	public void onJoin(PlayerJoinEvent e) {
+		Player p = e.getPlayer();
+
+		//This is used to return players to the previous world
+		File lastPortalFile = new File("plugins/Dimensions/PlayerData/"+p.getName()+"/LastPortal.yml");
+		YamlConfiguration lastPortalConfig = YamlConfiguration.loadConfiguration(lastPortalFile);
+		
+		//Portal name
+          List<String> lup = lastPortalConfig.getStringList("LastUsedPortal");
+          lastPortalConfig.set("LastUsedPortal", lup);
+
+        //Worlds name
+          List<String> luw = lastPortalConfig.getStringList("LastUsedWorld");
+          lastPortalConfig.set("LastUsedWorld", luw);
+
+		try {
+			lastPortalConfig.save(lastPortalFile);
+		} catch (IOException exception) {
+			exception.printStackTrace();
+		}
+	}
+	
+	@EventHandler(ignoreCancelled = true)
+	public void onSave(WorldSaveEvent e) {
+		try {
+			writeJSON(portalLocations, locationsFile);
+		} catch (IOException ex) {
+			ex.printStackTrace();
 		}
 	}
 }

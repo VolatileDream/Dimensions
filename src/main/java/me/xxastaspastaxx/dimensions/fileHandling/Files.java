@@ -1,12 +1,12 @@
 package me.xxastaspastaxx.dimensions.fileHandling;
 
-import org.bukkit.plugin.Plugin;
+import me.xxastaspastaxx.dimensions.Main;
 
 public class Files {
 	
 	public PortalFiles portalFiles;
 	
-	public Files(Plugin pl) {
+	public Files(Main pl) {
 		portalFiles = new PortalFiles(pl);
 	}
 	

@@ -10,7 +10,6 @@ import org.bukkit.Color;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.Particle;
-import org.bukkit.Sound;
 import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
@@ -18,8 +17,6 @@ import org.bukkit.block.data.BlockData;
 import org.bukkit.block.data.Directional;
 import org.bukkit.block.data.MultipleFacing;
 import org.bukkit.block.data.Orientable;
-import org.bukkit.entity.Entity;
-import org.bukkit.entity.FallingBlock;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.block.BlockIgniteEvent.IgniteCause;
@@ -47,7 +44,9 @@ public class CustomPortal {
 	String face;
 	Material frame;
 	Material lighter;
+	
 	World world;
+	int worldHeight;
 	String ratio;
 	
 	int minPortalWidth;
@@ -61,7 +60,7 @@ public class CustomPortal {
 	String particlesColor;
 	
 	public CustomPortal(PortalClass portalClass, String name, boolean enabled, String displayName, Material material, String face,
-			Material frame, Material lighter, World world, String ratio, int minPortalWidth, int minPortalHeight,
+			Material frame, Material lighter, World world, int worldHeight, String ratio, int minPortalWidth, int minPortalHeight,
 			boolean buildExitPortal, boolean spawnOnAir, ArrayList<World> disabledWorlds, String particlesColor, Plugin plugin) {
 		
 		this.plugin = plugin;
@@ -77,6 +76,7 @@ public class CustomPortal {
 		this.frame = frame;
 		this.lighter = lighter;
 		this.world = world;
+		this.worldHeight = worldHeight;
 		this.ratio = ratio;
 		this.minPortalWidth = minPortalWidth;
 		this.minPortalHeight = minPortalHeight;
@@ -127,9 +127,18 @@ public class CustomPortal {
 		}
 	}
 	
+	public String getFaceString() {
+		return face;
+	}
+	
 	public World getWorld() {
 		return world;
 	}
+	
+	public int getWorldHeight() {
+		return worldHeight;
+	}
+	
 	
 	public int getRatio() {
 		int[] ratio = new int[2];
@@ -137,7 +146,8 @@ public class CustomPortal {
 		ratio[0] = Integer.parseInt(this.ratio.split(":")[0]);
 		ratio[1] = Integer.parseInt(this.ratio.split(":")[1]);
 		
-		return ratio[1]/ratio[0];
+		if (ratio[0]>ratio[1]) return ratio[0]/ratio[1];
+		else return ratio[1]/ratio[0];
 	}
 		
 	public int getMinPortalWidth() {
@@ -170,6 +180,8 @@ public class CustomPortal {
 	}
 	
 	public List<Object> isPortal(Location loc, boolean checkEmpty, boolean load) {
+		if (loc.getWorld().equals(getWorld()) && loc.getY()>getWorldHeight()) return null;
+		
 		try {
 			loc.getBlock();
 		} catch (Exception e) {
@@ -197,15 +209,17 @@ public class CustomPortal {
 	        	down = (int) (location.getY()-loc.getY());
 	            break;
 	        }
+	        if(blocks==maxRadius) return null;
 		}
 		
 		location = loc.clone();
-		for (int blocks = 1; blocks <= maxRadius; blocks++) {
+		for (int blocks = 1; blocks <= maxRadius-(down-1); blocks++) {
 	        location.add(0, 1, 0);
 	        if (isPortalBlock(location.getBlock())) {
 	        	up = (int) (location.getY()-loc.getY());
 	            break;
 	        }
+	        if(blocks==maxRadius-(down-1)) return null;
 		}
 		
 		location = loc.clone();
@@ -218,7 +232,7 @@ public class CustomPortal {
 		}
 		
 		location = loc.clone();
-		for (int blocks = 1; blocks <= maxRadius; blocks++) {
+		for (int blocks = 1; blocks <= maxRadius-(east-1); blocks++) {
 	        location.add(-1, 0, 0);
 	        if (isPortalBlock(location.getBlock())) {
 	        	west = (int) (location.getX()-loc.getX());
@@ -236,7 +250,7 @@ public class CustomPortal {
 		}
 		
 		location = loc.clone();
-		for (int blocks = 1; blocks <= maxRadius; blocks++) {
+		for (int blocks = 1; blocks <= maxRadius-(south-1); blocks++) {
 	        location.add(0, 0, -1);
 	        if (isPortalBlock(location.getBlock())) {
 	        	north = (int) (location.getZ()-loc.getZ());
@@ -288,7 +302,7 @@ public class CustomPortal {
 			}
 		}
 		
-		if (north!=0 && south!=0 && !accepted) {
+		if (!accepted && north!=0 && south!=0) {
 			min.setZ(min.getZ()+north);
 			extraMin.add(0,0,1);
 			max.setZ(max.getZ()+south);
@@ -356,7 +370,7 @@ public class CustomPortal {
 		for (int y = 0;y<portal.length;y++) {
 			for (int side = 0;side<portal[0].length;side++) {
 				
-				//is round the correct material? (skip corners)
+				//is round the correct material? (skip corners)	
 				if ((y==0 && side==0) || (y==portal.length-1 && side==0) || (y==0 && side==portal[0].length-1) || (y==portal.length-1 && side==portal[0].length-1)) continue;
 				if ((y==0 || y==portal.length-1) && !isPortalBlock(portal[y][side])) return false;
 				if ((side==0 || side==portal[0].length-1) && !isPortalBlock(portal[y][side])) return false;
@@ -395,16 +409,10 @@ public class CustomPortal {
 	
 	//Fill the center with he frame blocks
 	public boolean lightPortal(Location loc, IgniteCause cause, LivingEntity igniter, boolean load) {
-
+		if (loc.getWorld().equals(getWorld()) && loc.getY()>getWorldHeight()) return false;
+		
 		List<Object> portal = isPortal(loc, true, load);
 		if (portal==null) return false;
-		if (getFrame()==Material.WATER || getFrame()==Material.LAVA) {
-			if (loc.getBlock().getType()!=Material.AIR) return false;
-		} else {
-			for (Entity en : loc.getWorld().getNearbyEntities(loc, 1,1,1)) {
-				if (en instanceof FallingBlock) return false;
-			}
-		}
 		
 		@SuppressWarnings("unchecked")
 		List<Block> blocks = (List<Block>) portal.get(1);
@@ -417,17 +425,12 @@ public class CustomPortal {
 			
 			Location min = portalLocations[0].add(portalLocations[2]);
 			Location max = portalLocations[1].add(portalLocations[3]);
-
+			
 			for(int y = (int) Math.min(max.getBlockY(), min.getBlockY()); y <= (int) Math.max(min.getBlockY(), max.getBlockY()); y++) {
 				for(int x = (int) Math.max(max.getBlockX(), min.getBlockX()); x >= (int) Math.min(min.getBlockX(), max.getBlockX()); x--) {
 					for(int z = (int) Math.max(max.getBlockZ(), min.getBlockZ()); z >= (int) Math.min(min.getBlockZ(), max.getBlockZ()); z--) {
 						Location blockLocation = new Location(loc.getWorld(),x,y,z);
-						Block block = blockLocation.getBlock();
-						if (min.getZ()!=max.getZ()) {
-							setFrameBlock(block, true, load);
-						} else {
-							setFrameBlock(block, false, load);
-						}
+						setFrameBlock(blockLocation, min.getZ()!=max.getZ(), load);
 					}
 				}
 			}
@@ -436,44 +439,6 @@ public class CustomPortal {
 		}
 
 		return false;
-	}
-	
-	public boolean destroy(Location loc, DestroyCause cause, Entity destroyer) {
-		List<Object> portal = isPortal(loc, false, false);
-		if (portal==null) return false;
-
-		CustomPortalDestroyEvent event = new CustomPortalDestroyEvent(loc, this, cause, destroyer);
-		Bukkit.getServer().getPluginManager().callEvent(event);
-		if (!event.isCancelled()) {
-			
-			Location[] portalLocations = (Location[]) portal.get(0);
-			
-			Location min = portalLocations[0].add(portalLocations[2]);
-			Location max = portalLocations[1].add(portalLocations[3]);
-	
-			for(int y = (int) Math.min(max.getBlockY(), min.getBlockY()); y <= (int) Math.max(min.getBlockY(), max.getBlockY()); y++) {
-				for(int x = (int) Math.max(max.getBlockX(), min.getBlockX()); x >= (int) Math.min(min.getBlockX(), max.getBlockX()); x--) {
-					for(int z = (int) Math.max(max.getBlockZ(), min.getBlockZ()); z >= (int) Math.min(min.getBlockZ(), max.getBlockZ()); z--) {
-						Location blockLocation = new Location(loc.getWorld(),x,y,z);
-						Block block = blockLocation.getBlock();
-						block.getWorld().spawnParticle(Particle.BLOCK_CRACK, block.getLocation(), 10, getFrameBlockData(block, false));
-						block.getWorld().playSound(blockLocation, Sound.BLOCK_GLASS_BREAK, 1.0F, 8.0F);
-						block.setType(Material.AIR);
-						for (Entity en : blockLocation.getWorld().getNearbyEntities(blockLocation, 1,1,1)) {
-							if (en instanceof FallingBlock) {
-								en.remove();
-							}
-						}
-						
-						portalClass.removeLocation(this, blockLocation);
-					}
-				}
-			}
-			
-			return true;
-		} else {
-			return false;
-		}
 	}
 	
 	public void setBlock(Block block) {
@@ -542,24 +507,43 @@ public class CustomPortal {
 		}
 	}
 	
-	public void setFrameBlock(Block block, boolean zAxis, boolean load) {
-		block.setBlockData(getFrameBlockData(block, zAxis));
-		if (block.getType()!=Material.LAVA && block.getType()!=Material.WATER) {
-			FallingBlock fallingBlock = block.getLocation().getWorld().spawnFallingBlock(block.getLocation().add(0.5f,0,0.5f), block.getBlockData());
-			fallingBlock.setGravity(false);
-			fallingBlock.setDropItem(false);
-			fallingBlock.setHurtEntities(false);
-			fallingBlock.setTicksLived(Integer.MAX_VALUE);
-			block.setType(Material.AIR);
+	public void setFrameBlock(Location loc, boolean zAxis, boolean load) {
+		if (loc.getWorld().equals(getWorld()) && loc.getY()>getWorldHeight()) return;
+		if (!load && portalClass.isPortalAtLocation(loc)) return;
+		
+		PortalFrame frame = new PortalFrame(portalClass,this,loc,zAxis);
+		if (portalClass.addFrame(this,frame)) {
+			if (!load) portalClass.addLocation(this,loc);
+		} else {
+			portalClass.removeLocation(this, loc);
 		}
-		if (!load) portalClass.addLocation(this,block.getLocation());
 	}
 	
+	public boolean destroy(Location loc, DestroyCause cuase, LivingEntity entity) {
+		if ((entity instanceof Player) && portalClass.getPlugin().getWorldGuardFlags()!=null && !portalClass.getPlugin().getWorldGuardFlags().testState((Player) entity, loc,WorldGuardFlags.DestroyCustomPortal)) return false;
+		
+		CustomPortalDestroyEvent event = new CustomPortalDestroyEvent(loc, this, cuase, entity);
+		Bukkit.getServer().getPluginManager().callEvent(event);
+		if (!event.isCancelled()) {
+			PortalFrame frame = portalClass.getFrameAtLocation(loc);
+			if (frame!=null) {
+				return frame.destroy();
+			}
+		}
+		
+		return false;
+	}
+	
+	
 	//Find the location that the player must go when entering a portal
-	public Location calculateTeleportLocation(Player p, EntityUseCustomPortalEvent event) {
+	public Location calculateTeleportLocation(LivingEntity p, EntityUseCustomPortalEvent event) {
 		
 		Location loc = event.getLocation();
 		Location teleportLocation;
+
+		if (getWorldHeight()>0) loc.setY(loc.getY()/(256/getWorldHeight()));
+		if (loc.getWorld().equals(getWorld()) && loc.getY()+4>getWorldHeight()) loc.setY(getWorldHeight()-4);
+		
 		
 		//If player is returning plugin will find the world he got into from. If not he will be teleported to the default world
 		if (!loc.getWorld().getName().contentEquals(getWorld().getName())) {
@@ -570,7 +554,7 @@ public class CustomPortal {
 		
 		if (event.isForcedTeleport()) return teleportLocation;
 		if (teleportLocation.getX()==Double.POSITIVE_INFINITY || teleportLocation.getX()==Double.NEGATIVE_INFINITY || teleportLocation.getZ()==Double.POSITIVE_INFINITY || teleportLocation.getZ()==Double.NEGATIVE_INFINITY) {
-			p.sendMessage("§4ERROR: §cPortal \""+getDisplayName()+"\"§c uses bad math for world ratio maybe. "+ratio.split(":")[0]+">"+ratio.split(":")[1]+"?. Report this to an admin. X = "+teleportLocation.getX()+", Z = "+teleportLocation.getZ());
+			if (p instanceof Player) p.sendMessage("§4ERROR: §cPortal \""+getDisplayName()+"\"§c maybe has world ratio wrongly set. Change "+ratio.split(":")[0]+":"+ratio.split(":")[1]+" to "+ratio.split(":")[1]+":"+ratio.split(":")[0]+"?. Report this to an admin. X = "+teleportLocation.getX()+", Z = "+teleportLocation.getZ());
 			return null;
 		}
 
@@ -582,6 +566,7 @@ public class CustomPortal {
 			nearestLocation.setPitch(loc.getPitch());
 			if (nearestLocation.getBlock().getRelative(BlockFace.WEST).getType()!=frame) nearestLocation.add(0.5,0,0);
 			if (nearestLocation.getBlock().getRelative(BlockFace.NORTH).getType()!=frame) nearestLocation.add(0,0,0.5);
+			event.setZaxis(isZAxis(loc));
 			return nearestLocation;
 		}
 		
@@ -639,6 +624,7 @@ public class CustomPortal {
 	    int size=16;
 	    for (int sz=1;sz<=size;sz++) {
 			for (int y=sz;y>=-sz;y--) {
+				if (y<=0) break;
 				int x = 0;
 			    int z = 0;
 			    int d = 0;
@@ -675,21 +661,24 @@ public class CustomPortal {
 	}
 	
 	public boolean canBuildPortal(Location loc, boolean zAxis) {
+		if (loc.getWorld().equals(getWorld()) && loc.getY()+4>getWorldHeight()) return false;
 		
 		if (getBuildExitPortal()) {
 			for (int i=-1;i<3;i++) {
-				if (!loc.getBlock().getRelative(BlockFace.DOWN).getRelative(!zAxis ? BlockFace.WEST : BlockFace.SOUTH,i).getType().isSolid() ||
-					(loc.getBlock().getRelative(BlockFace.UP,3).getRelative(!zAxis ? BlockFace.WEST : BlockFace.SOUTH,i).getType()!=Material.AIR && !isPortalBlock(loc.getBlock().getRelative(BlockFace.UP,3).getRelative(!zAxis ? BlockFace.WEST : BlockFace.SOUTH,i))))
-						return false; 
+				if (!loc.getBlock().getRelative(BlockFace.DOWN).getRelative(!zAxis ? BlockFace.WEST : BlockFace.SOUTH,i).getType().isSolid())
+					return false; 
 			}
 			
 			
 			for (int i=0;i<4;i++) {
-				if ((loc.getBlock().getRelative(BlockFace.UP,i).getRelative(!zAxis ? BlockFace.EAST : BlockFace.NORTH).getType()!=Material.AIR && !isPortalBlock(loc.getBlock().getRelative(BlockFace.UP,i).getRelative(!zAxis ? BlockFace.EAST : BlockFace.NORTH))) ||
-					(loc.getBlock().getRelative(BlockFace.UP,i).getRelative(!zAxis ? BlockFace.WEST : BlockFace.SOUTH,2).getType()!=Material.AIR && !isPortalBlock(loc.getBlock().getRelative(BlockFace.UP,i).getRelative(!zAxis ? BlockFace.WEST : BlockFace.SOUTH,2))) ||
-					(loc.getBlock().getRelative(BlockFace.UP,i).getRelative(!zAxis ? BlockFace.WEST : BlockFace.SOUTH).getType()!=Material.AIR && !isPortalBlock(loc.getBlock().getRelative(BlockFace.UP,i).getRelative(!zAxis ? BlockFace.WEST : BlockFace.SOUTH))) ||
-					(loc.getBlock().getRelative(BlockFace.UP,i).getType()!=Material.AIR && !isPortalBlock(loc.getBlock().getRelative(BlockFace.UP,i))))
+				if ((loc.getBlock().getRelative(BlockFace.UP,i).getRelative(!zAxis ? BlockFace.EAST : BlockFace.NORTH).getType()!=Material.AIR) ||
+					(loc.getBlock().getRelative(BlockFace.UP,i).getRelative(!zAxis ? BlockFace.WEST : BlockFace.SOUTH,2).getType()!=Material.AIR) ||
+					(loc.getBlock().getRelative(BlockFace.UP,i).getRelative(!zAxis ? BlockFace.WEST : BlockFace.SOUTH).getType()!=Material.AIR) ||
+					(loc.getBlock().getRelative(BlockFace.UP,i).getType()!=Material.AIR))
 						return false;
+				
+				if (!loc.getBlock().getRelative(BlockFace.UP,i+1).getRelative(zAxis ? BlockFace.EAST : BlockFace.NORTH).getType().isSolid() || !loc.getBlock().getRelative(BlockFace.UP,i+1).getRelative(zAxis ? BlockFace.WEST : BlockFace.SOUTH).getType().isSolid())
+					return false;
 			}
 		} else {
 			if (loc.getBlock().getType()!=Material.AIR ||
@@ -704,7 +693,8 @@ public class CustomPortal {
 
 	}
 	
-	public void usePortal(Player p,boolean forceTP) {
+	public void usePortal(LivingEntity p, boolean forceTP) {
+		if ((p instanceof Player) && portalClass.getPlugin().getWorldGuardFlags()!=null && !portalClass.getPlugin().getWorldGuardFlags().testState((Player) p, p.getLocation(),WorldGuardFlags.UseCustomPortal)) return;
 		
 		//Disable teleportation if player is in the disabled worlds
 		if (getDisabledWorlds().contains(p.getLocation().getWorld())) return;
@@ -714,6 +704,8 @@ public class CustomPortal {
 		if (!event.isCancelled()) {
 			//Calculate teleport location and teleport the player there
 			Location startLocation = event.getLocation();
+			if (startLocation.getWorld().equals(getWorld()) && startLocation.getY()>getWorldHeight()) startLocation.setY(getWorldHeight()-5);
+			event.setLocation(startLocation);
 			Location teleportLocation = calculateTeleportLocation(p, event);
 			EntityTeleportCustomPortalEvent tpEvent = new EntityTeleportCustomPortalEvent(event,teleportLocation,startLocation);
 			Bukkit.getServer().getPluginManager().callEvent(tpEvent);
@@ -721,18 +713,23 @@ public class CustomPortal {
 				if (teleportLocation!=null && !event.isForcedTeleport()) {
 					if (event.getBuildLocation()!=null) buildPortal(event);
 					portalClass.addToUsedPortals(p,this);
-					p.teleport(teleportLocation);
+					PortalFrame frame = portalClass.getFrameAtLocation(teleportLocation);
+					if (frame!=null) {
+						frame.addToHold(p);
+					}
+					p.teleport(teleportLocation.add(0,0,(event.getBuildLocation()!=null && event.getZaxis()?0.5:0)));
 				}
 			}
 		}
 	}
 	
 	public void buildPortal(EntityUseCustomPortalEvent event) {
-
-		boolean zAxis = event.getZaxis();
+		if (event.getBuildLocation().getY()>getWorldHeight()) return;
+		
 		Location teleportLocation = event.getBuildLocation();
 		
 		if (event.getBuildExitPortal()) {
+			boolean zAxis = event.getZaxis();
 			
 			//build a portal
 			boolean added = false;
@@ -741,9 +738,10 @@ public class CustomPortal {
 				teleportLocation.add(0,-1,0);
 			}
 			if (!teleportLocation.getBlock().getRelative(BlockFace.DOWN).getType().isSolid()) {
+				teleportLocation.add(0,-1,0);
 				for (int side = -1;side<2;side++) {
-					setBlock(teleportLocation.getBlock().getRelative(BlockFace.DOWN).getRelative(!zAxis ? BlockFace.SOUTH : BlockFace.WEST,side));
-					setBlock(teleportLocation.getBlock().getRelative(BlockFace.DOWN).getRelative(!zAxis ? BlockFace.WEST : BlockFace.SOUTH,1).getRelative(!zAxis ? BlockFace.SOUTH : BlockFace.WEST,side));
+					setBlock(teleportLocation.getBlock().getRelative(!zAxis ? BlockFace.SOUTH : BlockFace.WEST,side));
+					setBlock(teleportLocation.getBlock().getRelative(!zAxis ? BlockFace.WEST : BlockFace.SOUTH,1).getRelative(!zAxis ? BlockFace.SOUTH : BlockFace.WEST,side));
 				}
 			}
 			
@@ -756,8 +754,8 @@ public class CustomPortal {
 				setBlock(teleportLocation.getBlock().getRelative(BlockFace.UP,i).getRelative(!zAxis ? BlockFace.EAST : BlockFace.NORTH));
 				setBlock(teleportLocation.getBlock().getRelative(BlockFace.UP,i).getRelative(!zAxis ? BlockFace.WEST : BlockFace.SOUTH,2));
 	
-				setFrameBlock(teleportLocation.getBlock().getRelative(BlockFace.UP,i).getRelative(!zAxis ? BlockFace.WEST : BlockFace.SOUTH),zAxis,false);
-				setFrameBlock(teleportLocation.getBlock().getRelative(BlockFace.UP,i),zAxis,false);
+				setFrameBlock(teleportLocation.getBlock().getRelative(BlockFace.UP,i).getRelative(!zAxis ? BlockFace.WEST : BlockFace.SOUTH).getLocation(),zAxis,false);
+				setFrameBlock(teleportLocation.getBlock().getRelative(BlockFace.UP,i).getLocation(),zAxis,false);
 			}
 			if (added) teleportLocation.add(0,1,0);
 		} else {
