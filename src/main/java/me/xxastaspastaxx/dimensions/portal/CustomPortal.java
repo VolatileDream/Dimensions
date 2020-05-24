@@ -2,6 +2,7 @@ package me.xxastaspastaxx.dimensions.portal;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 
 import org.bukkit.Axis;
@@ -17,11 +18,14 @@ import org.bukkit.block.data.BlockData;
 import org.bukkit.block.data.Directional;
 import org.bukkit.block.data.MultipleFacing;
 import org.bukkit.block.data.Orientable;
+import org.bukkit.entity.EntityType;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.block.BlockIgniteEvent.IgniteCause;
 import org.bukkit.plugin.Plugin;
+import org.bukkit.potion.PotionEffect;
 
+import me.xxastaspastaxx.dimensions.Dimensions;
 import me.xxastaspastaxx.dimensions.events.CustomPortalDestroyEvent;
 import me.xxastaspastaxx.dimensions.events.CustomPortalIgniteEvent;
 import me.xxastaspastaxx.dimensions.events.DestroyCause;
@@ -52,6 +56,11 @@ public class CustomPortal {
 	int minPortalWidth;
 	int minPortalHeight;
 	
+	HashMap<EntityType,EntityType> entityTransformation;
+	
+	int[] spawningDelay;
+	HashMap<EntityType,Integer> entitySpawning;
+	
 	boolean buildExitPortal;
 	boolean spawnOnAir;
 	
@@ -61,6 +70,7 @@ public class CustomPortal {
 	
 	public CustomPortal(PortalClass portalClass, String name, boolean enabled, String displayName, Material material, String face,
 			Material frame, Material lighter, World world, int worldHeight, String ratio, int minPortalWidth, int minPortalHeight,
+			HashMap<EntityType,EntityType> entityTransformation, int[] spawningDelay, HashMap<EntityType,Integer> entitySpawning,
 			boolean buildExitPortal, boolean spawnOnAir, ArrayList<World> disabledWorlds, String particlesColor, Plugin plugin) {
 		
 		this.plugin = plugin;
@@ -80,6 +90,9 @@ public class CustomPortal {
 		this.ratio = ratio;
 		this.minPortalWidth = minPortalWidth;
 		this.minPortalHeight = minPortalHeight;
+		this.entityTransformation = entityTransformation;
+		this.spawningDelay = spawningDelay;
+		this.entitySpawning = entitySpawning;
 		this.buildExitPortal = buildExitPortal;
 		this.spawnOnAir = spawnOnAir;
 		this.disabledWorlds = disabledWorlds;
@@ -156,6 +169,29 @@ public class CustomPortal {
 	
 	public int getMinPortalHeight() {
 		return minPortalHeight;
+	}
+	
+	public EntityType getEntityTransformation(EntityType type) {
+		return entityTransformation.get(type);
+	}
+	
+	public long getEntityDelay() {
+		return Dimensions.getRandom(spawningDelay[0],spawningDelay[1]);
+	}
+	
+	public EntityType getEntitySpawn() {
+		for (EntityType type : entitySpawning.keySet()) {
+			//1<=0
+			if (Dimensions.getRandom(1,100)<=entitySpawning.get(type)) {
+				return type;
+			}
+		}
+		
+		return null;
+	}
+	
+	public boolean canSpawnEntities() {
+		return entitySpawning.size()>0;
 	}
 	
 	public boolean getBuildExitPortal() {
@@ -619,42 +655,41 @@ public class CustomPortal {
 	}
 	
 	public Location spiralSearch(Location teleportLocation, boolean zAxis) {
-
-
 	    int size=16;
-	    for (int sz=1;sz<=size;sz++) {
-			for (int y=sz;y>=-sz;y--) {
-				if (y<=0) break;
-				int x = 0;
-			    int z = 0;
-			    int d = 0;
-			    int s = 1;
-			    
-			    for (int k=1; k<=(sz*2-1); k++)
-			    {
-			        for (int j=0; j<(k<(sz*2-1)?2:3); j++)
-			        {
-			            for (int i=0; i<s; i++)
-			            {
-			            	if (teleportLocation.getY()+y<=0) continue;
-			            	Location blockLocation = new Location(teleportLocation.getWorld(),teleportLocation.getX()+x,teleportLocation.getY()+y,teleportLocation.getZ()+z);
-							if (canBuildPortal(blockLocation, zAxis)) {
-								return blockLocation;
-							}
+	    for (int siz = 4;siz<=size;siz++) {
+			for (int y=-siz+3;y<=siz-3;y++) {
+				for (int sz=1;sz<=siz;sz++) {
+	            	if (teleportLocation.getY()+y<=0 || teleportLocation.getY()+y>=getWorldHeight()) continue;
+					int x = 0;
+				    int z = 0;
+				    int d = 0;
+				    int s = 1;
+				    
+				    for (int k=1; k<=(sz*2-1); k++)
+				    {
+				        for (int j=0; j<(k<(sz*2-1)?2:3); j++)
+				        {
+				            for (int i=0; i<s; i++)
+				            {
+				            	Location blockLocation = new Location(teleportLocation.getWorld(),teleportLocation.getX()+x,teleportLocation.getY()+y,teleportLocation.getZ()+z);
+								if (canBuildPortal(blockLocation, zAxis)) {
+									return blockLocation;
+								}
 
-			                switch (d)
-			                {
-			                    case 0: z++; break;
-			                    case 1: x++; break;
-			                    case 2: z--; break;
-			                    case 3: x--; break;
-			                }
-			            }
-			            d = (d+1)%4;
-			        }
-			        s = s + 1;
-			  }
-			}
+				                switch (d)
+				                {
+				                    case 0: z++; break;
+				                    case 1: x++; break;
+				                    case 2: z--; break;
+				                    case 3: x--; break;
+				                }
+				            }
+				            d = (d+1)%4;
+				        }
+				        s = s + 1;
+				  }
+				}
+		    }
 	    }
 
 	    return null;
@@ -666,9 +701,8 @@ public class CustomPortal {
 		if (getBuildExitPortal()) {
 			for (int i=-1;i<3;i++) {
 				if (!loc.getBlock().getRelative(BlockFace.DOWN).getRelative(!zAxis ? BlockFace.WEST : BlockFace.SOUTH,i).getType().isSolid())
-					return false; 
+					return false;
 			}
-			
 			
 			for (int i=0;i<4;i++) {
 				if ((loc.getBlock().getRelative(BlockFace.UP,i).getRelative(!zAxis ? BlockFace.EAST : BlockFace.NORTH).getType()!=Material.AIR) ||
@@ -676,9 +710,6 @@ public class CustomPortal {
 					(loc.getBlock().getRelative(BlockFace.UP,i).getRelative(!zAxis ? BlockFace.WEST : BlockFace.SOUTH).getType()!=Material.AIR) ||
 					(loc.getBlock().getRelative(BlockFace.UP,i).getType()!=Material.AIR))
 						return false;
-				
-				if (!loc.getBlock().getRelative(BlockFace.UP,i+1).getRelative(zAxis ? BlockFace.EAST : BlockFace.NORTH).getType().isSolid() || !loc.getBlock().getRelative(BlockFace.UP,i+1).getRelative(zAxis ? BlockFace.WEST : BlockFace.SOUTH).getType().isSolid())
-					return false;
 			}
 		} else {
 			if (loc.getBlock().getType()!=Material.AIR ||
@@ -717,7 +748,29 @@ public class CustomPortal {
 					if (frame!=null) {
 						frame.addToHold(p);
 					}
+					if (!(p instanceof Player)) {
+						EntityType type = getEntityTransformation(p.getType());
+						if (type!=null) {
+							LivingEntity entity = (LivingEntity) teleportLocation.getWorld().spawnEntity(teleportLocation,type);
+							
+							for (PotionEffect effect : p.getActivePotionEffects()) { entity.addPotionEffect(effect); }
+							entity.setCanPickupItems(p.getCanPickupItems());
+							entity.setCustomName(p.getCustomName());
+							entity.getEquipment().setArmorContents(p.getEquipment().getArmorContents());
+							entity.getEquipment().setItemInMainHand(p.getEquipment().getItemInMainHand());
+							entity.getEquipment().setItemInOffHand(p.getEquipment().getItemInOffHand());
+							entity.setFireTicks(p.getFireTicks());
+							entity.setHealth(entity.getHealth());
+							entity.setTicksLived(p.getTicksLived());
+							
+							portalClass.getFrameAtLocation(teleportLocation).addToHold(entity);
+							
+							p.remove();
+							return;
+						}
+					}
 					p.teleport(teleportLocation.add(0,0,(event.getBuildLocation()!=null && event.getZaxis()?0.5:0)));
+					if (p instanceof Player) ((Player) p).sendBlockChange(teleportLocation, Material.NETHER_PORTAL.createBlockData());
 				}
 			}
 		}
@@ -738,7 +791,7 @@ public class CustomPortal {
 				teleportLocation.add(0,-1,0);
 			}
 			if (!teleportLocation.getBlock().getRelative(BlockFace.DOWN).getType().isSolid()) {
-				teleportLocation.add(0,-1,0);
+				//teleportLocation.add(0,-1,0);
 				for (int side = -1;side<2;side++) {
 					setBlock(teleportLocation.getBlock().getRelative(!zAxis ? BlockFace.SOUTH : BlockFace.WEST,side));
 					setBlock(teleportLocation.getBlock().getRelative(!zAxis ? BlockFace.WEST : BlockFace.SOUTH,1).getRelative(!zAxis ? BlockFace.SOUTH : BlockFace.WEST,side));
@@ -765,10 +818,10 @@ public class CustomPortal {
 		}
 		
 		
-		for (int i = 5;i>=0;i--) {
+		/*for (int i = 5;i>=0;i--) {
 			if (teleportLocation.getBlock().getRelative(BlockFace.DOWN,i).getType()==frame) {
 				teleportLocation.add(0,-i,0);
 			}
-		}
+		}*/
 	}
 }

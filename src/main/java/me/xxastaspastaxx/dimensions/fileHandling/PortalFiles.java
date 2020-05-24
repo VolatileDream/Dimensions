@@ -8,6 +8,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 
 import org.bukkit.Bukkit;
@@ -15,6 +16,7 @@ import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.WorldCreator;
 import org.bukkit.configuration.file.YamlConfiguration;
+import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -117,6 +119,20 @@ public class PortalFiles implements Listener {
 			int worldHeight = portalConfig.getInt("World.MaxHeight");
 			String ratio = portalConfig.getString("World.Ratio");
 			
+			HashMap<EntityType,EntityType> entityTransformation = new HashMap<EntityType,EntityType>();
+			for (String entity : portalConfig.getStringList("Entities.Transformation")) {
+				String[] spl = entity.toUpperCase().split("->");
+				entityTransformation.put(EntityType.valueOf(spl[0]), EntityType.valueOf(spl[1]));
+			}
+			
+			String[] spawningDelayString = portalConfig.getString("Entities.Spawning.Delay").split("-");
+			int[] spawningDelay = {Integer.parseInt(spawningDelayString[0]),Integer.parseInt(spawningDelayString[1])};
+			HashMap<EntityType,Integer> entitySpawning = new HashMap<EntityType,Integer>();
+			for (String entity : portalConfig.getStringList("Entities.Spawning.List")) {
+				String[] spl = entity.toUpperCase().split(";");
+				entitySpawning.put(EntityType.valueOf(spl[0]), Integer.parseInt(spl[1]));
+			}
+			
 			boolean buildExitPortal = portalConfig.getBoolean("BuildExitPortal");
 			boolean spawnOnAir = portalConfig.getBoolean("SpawnOnAir");
 			
@@ -138,7 +154,7 @@ public class PortalFiles implements Listener {
 			}
 			
 			//add the custom portal to the list so it can be used for later calculations
-			createdPortals.add(new CustomPortal(portalClass, name, enabled, displayName, material, face, frame, lighter, world, worldHeight, ratio, minPortalWidth, minPortalHeight, buildExitPortal, spawnOnAir, disabledWorlds, particlesColor, pl));
+			createdPortals.add(new CustomPortal(portalClass, name, enabled, displayName, material, face, frame, lighter, world, worldHeight, ratio, minPortalWidth, minPortalHeight, entityTransformation, spawningDelay, entitySpawning, buildExitPortal, spawnOnAir, disabledWorlds, particlesColor, pl));
 		}
 
 	  	portalClass.debug("Loaded "+ createdPortals.size() +" portals",1);
@@ -206,6 +222,20 @@ public class PortalFiles implements Listener {
   	  	portalConfig.addDefault("World.Name", "world");
   	  	portalConfig.addDefault("World.MaxHeight", 256);
   	  	portalConfig.addDefault("World.Ratio", "1:1");
+  	  	
+  	  	if (portalConfig.getStringList("Entities.Transformation").isEmpty()) {
+  	  		List<String> entitiesTransformation = portalConfig.getStringList("Entities.Transformation");
+  	  		//entitiesTransformation.add("SKELETON->WITHER_SKELETON");
+  	  		portalConfig.set("Entities.Transformation", entitiesTransformation);
+  	  	}
+  	  	
+
+  	  	portalConfig.addDefault("Entities.Spawning.Delay", "5000-10000");
+  	  	if (portalConfig.getStringList("Entities.Spawning.List").isEmpty()) {
+  	  		List<String> entitySpawning = portalConfig.getStringList("Entities.Spawning.List");
+  	  		//entitySpawning.add("SKELETON;50");
+  	  		portalConfig.set("Entities.Spawning.List", entitySpawning);
+  	  	}
   	  	
   	  	portalConfig.addDefault("BuildExitPortal", true);
   	  	portalConfig.addDefault("SpawnOnAir", false);

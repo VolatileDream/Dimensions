@@ -14,8 +14,6 @@ import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.block.BlockFace;
 import org.bukkit.configuration.file.YamlConfiguration;
-import org.bukkit.entity.Entity;
-import org.bukkit.entity.FallingBlock;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.block.BlockIgniteEvent.IgniteCause;
@@ -235,8 +233,8 @@ public class PortalClass {
 		for(Location location : portals) {
 			if (location.getBlock().getRelative(BlockFace.DOWN).getType()!=portal.material) continue;
 			double dist = location.distance(loc);
-			boolean hasFrame = false;
-			if ((!portal.getFrame().isSolid() && portal.getFrame()!=Material.NETHER_PORTAL) && location.getBlock().getType()==portal.getFrame()) {
+			boolean hasFrame = true;
+			/*if ((!portal.getFrame().isSolid() && portal.getFrame()!=Material.NETHER_PORTAL) && location.getBlock().getType()==portal.getFrame()) {
 				hasFrame = true;
 			} else {
 				for (Entity en : location.getWorld().getNearbyEntities(location, 1, 1, 1)) {
@@ -248,7 +246,7 @@ public class PortalClass {
 	            		break;
 	            	}
 				}
-			}
+			}*/
 
 			if (hasFrame && closestDistance>dist) {
 	    		closestLocation = location;

@@ -14,6 +14,7 @@ import org.bukkit.Sound;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.entity.Entity;
+import org.bukkit.entity.EntityType;
 import org.bukkit.entity.FallingBlock;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
@@ -22,8 +23,6 @@ import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
 import org.bukkit.event.world.ChunkLoadEvent;
 import org.bukkit.event.world.ChunkUnloadEvent;
-import org.bukkit.potion.PotionEffect;
-import org.bukkit.potion.PotionEffectType;
 
 public class PortalFrame implements Listener {
 	
@@ -38,6 +37,8 @@ public class PortalFrame implements Listener {
 	ArrayList<LivingEntity> hold = new ArrayList<LivingEntity>();
 	
 	boolean destroyed = false;
+	
+	int task2;
 	
 	public PortalFrame(PortalClass pc, CustomPortal customPortal, Location location, boolean zAxis) {
 		this.portal = customPortal;
@@ -90,13 +91,15 @@ public class PortalFrame implements Listener {
 		
 		if (loc.getChunk().equals(e.getChunk())) {
 			Bukkit.getScheduler().cancelTask(task);
+			Bukkit.getScheduler().cancelTask(task2);
 			remove();
 		}
 	}
 	
 	public void startTask() {
 
-		if (!loc.getChunk().isLoaded() || destroyed || Bukkit.getScheduler().isCurrentlyRunning(task)) return;
+		if (!loc.getChunk().isLoaded() || destroyed || Bukkit.getScheduler().isCurrentlyRunning(task) || Bukkit.getScheduler().isCurrentlyRunning(task2)) return;
+
 		task = Bukkit.getScheduler().scheduleSyncRepeatingTask(pc.pl, new Runnable() {
 			
 			public void run() {
@@ -123,7 +126,7 @@ public class PortalFrame implements Listener {
 			    	Entry<LivingEntity,Long> entry = timerIterator.next();
 			    	LivingEntity en = entry.getKey();
 			    	Location eloc = en.getLocation();
-					en.addPotionEffect(new PotionEffect(PotionEffectType.CONFUSION, pc.getTeleportDelay()*25, Integer.MAX_VALUE,false,false,false));
+					//en.addPotionEffect(new PotionEffect(PotionEffectType.CONFUSION, pc.getTeleportDelay()*25, Integer.MAX_VALUE,false,false,false));
 			    	if ((eloc.getBlockX()!=loc.getBlockX() || eloc.getBlockY()!=loc.getBlockY() || eloc.getBlockZ()!=loc.getBlockZ()) && (!pc.isPortalAtLocation(en.getLocation()) ||(pc.isPortalAtLocation(en.getLocation()) && !pc.getPortalAtLocation(en.getLocation()).equals(portal)))) {
 			    		timerIterator.remove();
 					} else if (((System.currentTimeMillis()-timer.get(en))/1000)>=pc.getTeleportDelay()) {
@@ -156,6 +159,17 @@ public class PortalFrame implements Listener {
 				}
 			}
 		}, 20,20);
+
+		if (!portal.getWorld().equals(loc.getWorld()) && portal.canSpawnEntities() && loc.getBlock().getRelative(BlockFace.DOWN).getType()==portal.getMaterial()) {
+			task2 = Bukkit.getScheduler().scheduleSyncRepeatingTask(pc.pl, new Runnable() {
+				public void run() {
+					EntityType type = portal.getEntitySpawn();
+					if (type!=null) {
+						hold.add((LivingEntity) loc.getWorld().spawnEntity(loc, type));
+					}
+				}
+			}, portal.getEntityDelay(), portal.getEntityDelay());
+		}
 	}
 	
 	public boolean isSameLocation() {
@@ -195,8 +209,9 @@ public class PortalFrame implements Listener {
 		destroyed = true;
 		
 		HandlerList.unregisterAll(this);
-		
+
 		Bukkit.getScheduler().cancelTask(task);
+		Bukkit.getScheduler().cancelTask(task2);
 		timer.clear();
 		for (LivingEntity en : hold) {
 			pc.removeFromHold(en);

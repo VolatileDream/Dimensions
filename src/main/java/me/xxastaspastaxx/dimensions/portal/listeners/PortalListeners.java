@@ -1,6 +1,7 @@
 package me.xxastaspastaxx.dimensions.portal.listeners;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 
 import org.bukkit.Bukkit;
@@ -10,6 +11,7 @@ import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
+import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
@@ -35,6 +37,7 @@ import org.bukkit.event.inventory.FurnaceBurnEvent;
 import org.bukkit.event.player.PlayerAnimationEvent;
 import org.bukkit.event.player.PlayerAnimationType;
 import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerRespawnEvent;
 import org.bukkit.event.player.PlayerTeleportEvent;
 import org.bukkit.event.world.PortalCreateEvent;
@@ -62,32 +65,11 @@ public class PortalListeners implements Listener {
 		Bukkit.getServer().getPluginManager().registerEvents(this, pl);
 	}
 	
- 
-	@EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
-	public void onPlayerClick(PlayerAnimationEvent e) {
-		if (e.getAnimationType()==PlayerAnimationType.ARM_SWING) {
-			int rad = 5;
-			try {
-				List<Block> los = e.getPlayer().getLineOfSight(null, rad);
-				for (Block block : los) {
-					if (block.getType()!=Material.AIR && !frameMaterials.contains(block.getType())) break;
-					CustomPortal portal = portalClass.getPortalAtLocation(block.getLocation());
-					if (portal!=null) {
-						portal.destroy(block.getLocation(), DestroyCause.PLAYER, e.getPlayer());
-						break;
-					}
-				}
-			} catch (IllegalStateException ex) {
-				
-			}
-		}
-	}
-	  
+	HashMap<Player,Long> clicked = new HashMap<Player,Long>();
+	
 	@EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
 	public void onPortalInteract(PlayerInteractEvent e) {
-		if (e.getAction() == Action.LEFT_CLICK_BLOCK || e.getAction() == Action.LEFT_CLICK_AIR) {
-
-		}
+		
 		if (e.getAction() == Action.RIGHT_CLICK_BLOCK || e.getAction() == Action.RIGHT_CLICK_AIR) {
 			try {
 				int rad = (int) ((e.getAction() == Action.RIGHT_CLICK_BLOCK)?Math.min(Math.ceil(e.getClickedBlock().getLocation().distance(e.getPlayer().getLocation())),5):5);
@@ -106,11 +88,39 @@ public class PortalListeners implements Listener {
         	if (e.getItem() == null || !lighters.contains(e.getItem().getType())) return;
         	Block block = e.getClickedBlock().getRelative(e.getBlockFace());
         	if (!portalClass.isPortalAtLocation(block.getLocation())) {
-        		portalClass.lightPortal(block.getLocation(), IgniteCause.FLINT_AND_STEEL, e.getPlayer(), e.getItem().getType());
+        		if (portalClass.lightPortal(block.getLocation(), IgniteCause.FLINT_AND_STEEL, e.getPlayer(), e.getItem().getType())) {
+            		clicked.put(e.getPlayer(), System.currentTimeMillis());
+        		}
         	} else {
         		e.setCancelled(true);
         	}
         }
+	}
+	
+	@EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
+	public void onPlayerClick(PlayerAnimationEvent e) {
+		
+		if (clicked.containsKey(e.getPlayer())) {
+			boolean cancel = System.currentTimeMillis()-clicked.get(e.getPlayer())<200;
+			clicked.remove(e.getPlayer());
+			if (cancel) return;
+		}
+		
+		if (e.getAnimationType()==PlayerAnimationType.ARM_SWING) {
+			int rad = 5;
+			try {
+				List<Block> los = e.getPlayer().getLineOfSight(null, rad);
+				for (Block block : los) {
+					if (block.getType()!=Material.AIR && !frameMaterials.contains(block.getType())) break;
+					CustomPortal portal = portalClass.getPortalAtLocation(block.getLocation());
+					if (portal!=null) {
+						portal.destroy(block.getLocation(), DestroyCause.PLAYER, e.getPlayer());
+					}
+				}
+			} catch (IllegalStateException ex) {
+				
+			}
+		}
 	}
 	
 	@EventHandler(ignoreCancelled = true)
@@ -254,5 +264,17 @@ public class PortalListeners implements Listener {
 	@EventHandler(ignoreCancelled = true)
 	public void onRespawn(PlayerRespawnEvent e) {
 		portalClass.findBestPathAndUse(e.getPlayer(),e.getPlayer().getWorld(),e.getRespawnLocation().getWorld());
+	}
+	
+	@EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
+	public void onPlayerMove(PlayerMoveEvent e) {
+		if (!e.getFrom().getBlock().equals(e.getTo().getBlock())) {
+			if (portalClass.isPortalAtLocation(e.getTo())) {
+				e.getPlayer().sendBlockChange(e.getTo(), Material.NETHER_PORTAL.createBlockData());
+			}
+			if (portalClass.isPortalAtLocation(e.getFrom())) {
+				e.getPlayer().sendBlockChange(e.getFrom(), e.getFrom().getBlock().getBlockData());
+			}
+		}
 	}
 }
