@@ -90,7 +90,9 @@ public class PortalFiles implements Listener {
 
 	  	portalClass.debug("Loading Portals...",2);
 		for (File portal : portals) {
+		  	portalClass.debug("Testing "+portal,2);
 			if (portal.getName().contentEquals("portalLocations.json") || portal.getName().contains(" ")) continue;
+		  	portalClass.debug("Loading "+portal,2);
 			
 			//Add strings added in new version that are missing and will crash plugin
 			fixOutdatedPortalFile(portal);
@@ -152,9 +154,10 @@ public class PortalFiles implements Listener {
 			if (!blocks.contains(material)) {
 				blocks.add(material);
 			}
-			
+
 			//add the custom portal to the list so it can be used for later calculations
 			createdPortals.add(new CustomPortal(portalClass, name, enabled, displayName, material, face, frame, lighter, world, worldHeight, ratio, minPortalWidth, minPortalHeight, entityTransformation, spawningDelay, entitySpawning, buildExitPortal, spawnOnAir, disabledWorlds, particlesColor, pl));
+		  	portalClass.debug("Loaded "+portal,2);
 		}
 
 	  	portalClass.debug("Loaded "+ createdPortals.size() +" portals",1);

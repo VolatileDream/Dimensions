@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 
 import org.bukkit.Location;
+import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
@@ -114,5 +115,9 @@ public class Dimensions {
 	
 	public static int getRandom(int min, int max) {
 		return (int)(Math.random()*((max-min)+1))+min;
+	}
+	
+	public static boolean isAir(Material mat) {
+		return (mat==Material.AIR || mat==Material.CAVE_AIR);
 	}
 }

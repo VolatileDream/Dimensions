@@ -43,6 +43,7 @@ import org.bukkit.event.player.PlayerTeleportEvent;
 import org.bukkit.event.world.PortalCreateEvent;
 import org.bukkit.plugin.Plugin;
 
+import me.xxastaspastaxx.dimensions.Dimensions;
 import me.xxastaspastaxx.dimensions.events.DestroyCause;
 import me.xxastaspastaxx.dimensions.portal.CustomPortal;
 import me.xxastaspastaxx.dimensions.portal.PortalClass;
@@ -85,7 +86,7 @@ public class PortalListeners implements Listener {
 		}
 		
         if (e.getAction() == Action.RIGHT_CLICK_BLOCK) {
-        	if (e.getItem() == null || !lighters.contains(e.getItem().getType())) return;
+        	if (e.getItem() == null || !lighters.contains(e.getItem().getType()) || !blocks.contains(e.getClickedBlock().getType())) return;
         	Block block = e.getClickedBlock().getRelative(e.getBlockFace());
         	if (!portalClass.isPortalAtLocation(block.getLocation())) {
         		if (portalClass.lightPortal(block.getLocation(), IgniteCause.FLINT_AND_STEEL, e.getPlayer(), e.getItem().getType())) {
@@ -111,7 +112,7 @@ public class PortalListeners implements Listener {
 			try {
 				List<Block> los = e.getPlayer().getLineOfSight(null, rad);
 				for (Block block : los) {
-					if (block.getType()!=Material.AIR && !frameMaterials.contains(block.getType())) break;
+					if (!Dimensions.isAir(block.getType()) && !frameMaterials.contains(block.getType())) break;
 					CustomPortal portal = portalClass.getPortalAtLocation(block.getLocation());
 					if (portal!=null) {
 						portal.destroy(block.getLocation(), DestroyCause.PLAYER, e.getPlayer());
@@ -257,7 +258,7 @@ public class PortalListeners implements Listener {
 	@EventHandler(ignoreCancelled = true)
 	public void onTeleport(PlayerTeleportEvent e) {
 		
-		if ((portalClass.getPortalAtLocation(e.getFrom())==null || portalClass.getPortalAtLocation(e.getTo())==null) /*&& !portalClass.isOnHold(e.getPlayer())*/)
+		if (!portalClass.isOnHold(e.getPlayer()))
 			portalClass.findBestPathAndUse(e.getPlayer(),e.getFrom().getWorld(),e.getTo().getWorld());
 	}
 

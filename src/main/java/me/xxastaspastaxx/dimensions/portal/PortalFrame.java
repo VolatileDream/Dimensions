@@ -24,6 +24,8 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.world.ChunkLoadEvent;
 import org.bukkit.event.world.ChunkUnloadEvent;
 
+import me.xxastaspastaxx.dimensions.Dimensions;
+
 public class PortalFrame implements Listener {
 	
 	PortalClass pc;
@@ -35,8 +37,9 @@ public class PortalFrame implements Listener {
 	int task;
 	HashMap<LivingEntity,Long> timer = new HashMap<LivingEntity,Long>();
 	ArrayList<LivingEntity> hold = new ArrayList<LivingEntity>();
-	
+
 	boolean destroyed = false;
+	boolean enabled = false;
 	
 	int task2;
 	
@@ -77,7 +80,7 @@ public class PortalFrame implements Listener {
 	
 	@EventHandler(ignoreCancelled = true)
 	public void onChunkLoad(ChunkLoadEvent e) {
-		if (destroyed) return;
+		if (destroyed || enabled) return;
 		
 		if (loc.getChunk().equals(e.getChunk())) {
 			startTask();
@@ -87,7 +90,7 @@ public class PortalFrame implements Listener {
 
 	@EventHandler(ignoreCancelled = true)
 	public void onChuckUnload(ChunkUnloadEvent e) {
-		if (destroyed) return;
+		if (destroyed || !enabled) return;
 		
 		if (loc.getChunk().equals(e.getChunk())) {
 			Bukkit.getScheduler().cancelTask(task);
@@ -99,12 +102,13 @@ public class PortalFrame implements Listener {
 	public void startTask() {
 
 		if (!loc.getChunk().isLoaded() || destroyed || Bukkit.getScheduler().isCurrentlyRunning(task) || Bukkit.getScheduler().isCurrentlyRunning(task2)) return;
-
+		
+		enabled = true;
 		task = Bukkit.getScheduler().scheduleSyncRepeatingTask(pc.pl, new Runnable() {
 			
 			public void run() {
 				
-				if (fallingBlock!=null && loc.getBlock().getType()!=Material.AIR) {
+				if (fallingBlock!=null && !Dimensions.isAir(loc.getBlock().getType())) {
 					loc.getBlock().setType(Material.AIR);
 				}
 				
@@ -189,6 +193,7 @@ public class PortalFrame implements Listener {
 		loc.getBlock().setType(Material.AIR);
 		if (fallingBlock!=null) fallingBlock.remove();
 		fallingBlock = null;
+		enabled = false;
 	}
 	
 	public void summon() {
@@ -207,6 +212,7 @@ public class PortalFrame implements Listener {
 	
 	public boolean destroy() {
 		destroyed = true;
+		enabled = false;
 		
 		HandlerList.unregisterAll(this);
 

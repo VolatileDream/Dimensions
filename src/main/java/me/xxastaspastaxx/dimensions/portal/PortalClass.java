@@ -111,12 +111,13 @@ public class PortalClass {
 	
 	//Check if any of the saved portals can be lit in this location
 	public boolean lightPortal(Location loc, IgniteCause cause, LivingEntity entity, Material lighter) {
+		
 		debug("Attempting to light a portal at "+loc,2);
 		if ((entity instanceof Player) && pl.getWorldGuardFlags()!=null && !pl.getWorldGuardFlags().testState((Player) entity, loc,WorldGuardFlags.IgniteCustomPortal)) {
 			debug("Player does not have permission to light a portal at current location",2);
 			return false;
 		}
-		
+
 		for (CustomPortal portal : portals) {
 			if (!portal.isEnabled() || portal.getDisabledWorlds().contains(loc.getWorld()) || portal.getLighter()!=lighter) continue; 
 			if (portal.lightPortal(loc, cause, entity, false)) {

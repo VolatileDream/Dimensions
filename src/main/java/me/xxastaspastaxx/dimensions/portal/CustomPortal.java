@@ -22,6 +22,7 @@ import org.bukkit.entity.EntityType;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.block.BlockIgniteEvent.IgniteCause;
+import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.potion.PotionEffect;
 
@@ -99,6 +100,33 @@ public class CustomPortal {
 		this.particlesColor = particlesColor;
 	}
 	
+	public CustomPortal(CustomPortal portal) {
+		this.plugin = portal.plugin;
+		
+		this.portalClass = portal.portalClass;
+		this.maxRadius = portal.portalClass.getMaxRadius();
+		
+		this.name = portal.name;
+		this.enabled = portal.enabled;
+		this.displayName = portal.displayName;
+		this.material = portal.material;
+		this.face = portal.face;
+		this.frame = portal.frame;
+		this.lighter = portal.lighter;
+		this.world = portal.world;
+		this.worldHeight = portal.worldHeight;
+		this.ratio = portal.ratio;
+		this.minPortalWidth = portal.minPortalWidth;
+		this.minPortalHeight = portal.minPortalHeight;
+		this.entityTransformation = portal.entityTransformation;
+		this.spawningDelay = portal.spawningDelay;
+		this.entitySpawning = portal.entitySpawning;
+		this.buildExitPortal = portal.buildExitPortal;
+		this.spawnOnAir = portal.spawnOnAir;
+		this.disabledWorlds = portal.disabledWorlds;
+		this.particlesColor = portal.particlesColor;
+	}
+	
 	public String getName() {
 		return name;
 	}
@@ -130,6 +158,10 @@ public class CustomPortal {
 	
 	public Material getLighter() {
 		return this.lighter;
+	}
+	
+	public void setLighter(ItemStack lighter) {
+		this.lighter = lighter.getType();
 	}
 	
 	public Axis getAxis() {
@@ -213,6 +245,10 @@ public class CustomPortal {
 		color = Color.fromRGB(Integer.parseInt(spl[0]),Integer.parseInt(spl[1]),Integer.parseInt(spl[2]));
 		
 		return color;
+	}
+	
+	public CustomPortal clone() {
+		return new CustomPortal(this);
 	}
 	
 	public List<Object> isPortal(Location loc, boolean checkEmpty, boolean load) {
@@ -412,7 +448,7 @@ public class CustomPortal {
 				if ((side==0 || side==portal[0].length-1) && !isPortalBlock(portal[y][side])) return false;
 				
 				//is it empty inside?
-				if (checkEmpty && (y>0 && y<portal.length-1 && side>0 && side<portal[0].length-1) && (!load && (portal[y][side].getType()!=Material.AIR || portalClass.getPortalAtLocation(portal[y][side].getLocation())!=null))) return false;
+				if (checkEmpty && (y>0 && y<portal.length-1 && side>0 && side<portal[0].length-1) && (!load && (!Dimensions.isAir(portal[y][side].getType()) || portalClass.getPortalAtLocation(portal[y][side].getLocation())!=null))) return false;
 			}
 		}
 		
@@ -609,30 +645,28 @@ public class CustomPortal {
 		boolean zAxis = isZAxis(loc);
 		event.setZaxis(zAxis);
 		
-		if (!getSpawnOnAir()) {
-			boolean foundLocation = false;
+		boolean foundLocation = false;
 
-			Location tempLoc = spiralSearch(teleportLocation, zAxis);
-			if (tempLoc!=null) {
-				teleportLocation =  tempLoc;
-				foundLocation = true;
-			} else {
-				while (!foundLocation && teleportLocation.getY()<teleportLocation.getWorld().getHighestBlockYAt(teleportLocation)) {
-					while (teleportLocation.getBlock().getRelative(BlockFace.UP).getType()!=Material.AIR && teleportLocation.getY()<teleportLocation.getWorld().getHighestBlockYAt(teleportLocation)) teleportLocation.add(0,1,0);
-					tempLoc = spiralSearch(teleportLocation, zAxis);
-					if (tempLoc!=null) {
-						teleportLocation =  tempLoc;
-						foundLocation = true;
-					} else {
-						teleportLocation.add(0,1,0);
-					}
+		Location tempLoc = spiralSearch(teleportLocation, zAxis);
+		if (tempLoc!=null) {
+			teleportLocation =  tempLoc;
+			foundLocation = true;
+		} else {
+			while (!foundLocation && teleportLocation.getY()<teleportLocation.getWorld().getHighestBlockYAt(teleportLocation)) {
+				while (!Dimensions.isAir(teleportLocation.getBlock().getRelative(BlockFace.UP).getType()) && teleportLocation.getY()<teleportLocation.getWorld().getHighestBlockYAt(teleportLocation)) teleportLocation.add(0,1,0);
+				tempLoc = spiralSearch(teleportLocation, zAxis);
+				if (tempLoc!=null) {
+					teleportLocation =  tempLoc;
+					foundLocation = true;
+				} else {
+					teleportLocation.add(0,1,0);
 				}
 			}
-			
-			if (!foundLocation) {
-				while (teleportLocation.getBlock().getRelative(BlockFace.DOWN).getType()==Material.AIR && teleportLocation.getY()>=10) {
-					teleportLocation.add(0,-1,0);
-				}
+		}
+		
+		if (!foundLocation) {
+			while (Dimensions.isAir(teleportLocation.getBlock().getRelative(BlockFace.DOWN).getType()) && teleportLocation.getY()>=10) {
+				teleportLocation.add(0,-1,0);
 			}
 		}
 		
@@ -699,21 +733,23 @@ public class CustomPortal {
 		if (loc.getWorld().equals(getWorld()) && loc.getY()+4>getWorldHeight()) return false;
 		
 		if (getBuildExitPortal()) {
-			for (int i=-1;i<3;i++) {
-				if (!loc.getBlock().getRelative(BlockFace.DOWN).getRelative(!zAxis ? BlockFace.WEST : BlockFace.SOUTH,i).getType().isSolid())
-					return false;
+			if (!getSpawnOnAir()) {
+				for (int i=-1;i<3;i++) {
+					if (!loc.getBlock().getRelative(BlockFace.DOWN).getRelative(!zAxis ? BlockFace.WEST : BlockFace.SOUTH,i).getType().isSolid())
+						return false;
+				}
 			}
 			
 			for (int i=0;i<4;i++) {
-				if ((loc.getBlock().getRelative(BlockFace.UP,i).getRelative(!zAxis ? BlockFace.EAST : BlockFace.NORTH).getType()!=Material.AIR) ||
-					(loc.getBlock().getRelative(BlockFace.UP,i).getRelative(!zAxis ? BlockFace.WEST : BlockFace.SOUTH,2).getType()!=Material.AIR) ||
-					(loc.getBlock().getRelative(BlockFace.UP,i).getRelative(!zAxis ? BlockFace.WEST : BlockFace.SOUTH).getType()!=Material.AIR) ||
-					(loc.getBlock().getRelative(BlockFace.UP,i).getType()!=Material.AIR))
+				if ((loc.getBlock().getRelative(BlockFace.UP,i).getRelative(!zAxis ? BlockFace.EAST : BlockFace.NORTH).getType().isSolid()) ||
+					(loc.getBlock().getRelative(BlockFace.UP,i).getRelative(!zAxis ? BlockFace.WEST : BlockFace.SOUTH,2).getType().isSolid()) ||
+					(loc.getBlock().getRelative(BlockFace.UP,i).getRelative(!zAxis ? BlockFace.WEST : BlockFace.SOUTH).getType().isSolid()) ||
+					(loc.getBlock().getRelative(BlockFace.UP,i).getType().isSolid()))
 						return false;
 			}
 		} else {
-			if (loc.getBlock().getType()!=Material.AIR ||
-				loc.getBlock().getRelative(BlockFace.UP).getType()!=Material.AIR)
+			if (!Dimensions.isAir(loc.getBlock().getType()) ||
+				!Dimensions.isAir(loc.getBlock().getRelative(BlockFace.UP).getType()))
 					return false;
 		}
 		return true;
@@ -743,7 +779,6 @@ public class CustomPortal {
 			if (!tpEvent.isCancelled()) {
 				if (teleportLocation!=null && !event.isForcedTeleport()) {
 					if (event.getBuildLocation()!=null) buildPortal(event);
-					portalClass.addToUsedPortals(p,this);
 					PortalFrame frame = portalClass.getFrameAtLocation(teleportLocation);
 					if (frame!=null) {
 						frame.addToHold(p);
@@ -769,8 +804,10 @@ public class CustomPortal {
 							return;
 						}
 					}
-					p.teleport(teleportLocation.add(0,0,(event.getBuildLocation()!=null && event.getZaxis()?0.5:0)));
-					if (p instanceof Player) ((Player) p).sendBlockChange(teleportLocation, Material.NETHER_PORTAL.createBlockData());
+					if (p.teleport(teleportLocation.add(0,0,(event.getBuildLocation()!=null && event.getZaxis()?0.5:0)))) {
+						portalClass.addToUsedPortals(p,this);
+						if (p instanceof Player) ((Player) p).sendBlockChange(p.getLocation(), Material.NETHER_PORTAL.createBlockData());
+					}
 				}
 			}
 		}
@@ -813,7 +850,7 @@ public class CustomPortal {
 			if (added) teleportLocation.add(0,1,0);
 		} else {
 			
-			if (teleportLocation.getBlock().getRelative(BlockFace.DOWN).getType()==Material.WATER || teleportLocation.getBlock().getRelative(BlockFace.DOWN).getType()==Material.LAVA || teleportLocation.getBlock().getRelative(BlockFace.DOWN).getType()==Material.AIR) 
+			if (teleportLocation.getBlock().getRelative(BlockFace.DOWN).getType()==Material.WATER || teleportLocation.getBlock().getRelative(BlockFace.DOWN).getType()==Material.LAVA || Dimensions.isAir(teleportLocation.getBlock().getRelative(BlockFace.DOWN).getType())) 
 				setBlock(teleportLocation.getBlock().getRelative(BlockFace.DOWN));
 		}
 		
