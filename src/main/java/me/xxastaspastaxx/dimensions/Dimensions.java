@@ -8,6 +8,7 @@ import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.configuration.file.YamlConfiguration;
+import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 
 import me.xxastaspastaxx.dimensions.portal.CustomPortal;
@@ -34,6 +35,10 @@ public class Dimensions {
 		return portalClass.isPortalAtLocation(loc);
 	}
 	
+	public static void addToHold(LivingEntity p) {
+		portalClass.addToHold(p);
+	}
+	
 	//get the portal
 	public static CustomPortal getPortal(Location loc,boolean load) {
 		return portalClass.getPortal(loc, load);
@@ -41,6 +46,10 @@ public class Dimensions {
 
 	public static CustomPortal getPortalAtLocation(Location loc) {
 		return portalClass.getPortalAtLocation(loc);
+	}
+	
+	public static PortalFrame getFrameAtLocation(Location loc) {
+		return portalClass.getFrameAtLocation(loc);
 	}
 	
 	public static ArrayList<Location> getPortalLocations() {
@@ -91,8 +100,16 @@ public class Dimensions {
 		return new File("plugins/Dimensions/Portals/"+portal.getName()+".yml");
 	}
 	
-	public static File getPlayerFile(Player p, String file) {
-		return new File("plugins/Dimensions/PlayerData/"+p.getName()+"/"+file+".yml");
+	public static File getPlayerFile(Player p, String path) {
+		File file = new File("plugins/Dimensions/PlayerData/"+p.getName()+"/"+path+".yml");
+		if (!file.exists()) {
+			try {
+				file.createNewFile();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
+		return file;
 	}
 	
 	public static void saveValueAs(File file, String data, Object value) {
@@ -109,7 +126,6 @@ public class Dimensions {
 	
 	public static Object getValue(File file, String data) {
 	  	YamlConfiguration config = YamlConfiguration.loadConfiguration(file);
-	  	
 	  	return config.get(data);
 	}
 	

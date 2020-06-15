@@ -9,6 +9,7 @@ import org.bukkit.event.Cancellable;
 import org.bukkit.event.Event;
 import org.bukkit.event.HandlerList;
 import org.bukkit.event.block.BlockIgniteEvent.IgniteCause;
+import org.bukkit.inventory.ItemStack;
 
 import me.xxastaspastaxx.dimensions.portal.CustomPortal;
 
@@ -24,14 +25,16 @@ public class CustomPortalIgniteEvent extends Event implements Cancellable {
     LivingEntity entity;
     boolean load;
     
+    ItemStack lighter;
     
-    public CustomPortalIgniteEvent(Location portalLocation, CustomPortal portal, List<Block> blocks, IgniteCause cause, LivingEntity entity, boolean load) {
+    public CustomPortalIgniteEvent(Location portalLocation, CustomPortal portal, List<Block> blocks, IgniteCause cause, LivingEntity entity, boolean load, ItemStack lighter) {
     	this.portalLocation=portalLocation;
     	this.portal=portal;
     	this.blocks = blocks;
     	this.cause = cause;
     	this.entity = entity;
     	this.load = load;
+    	this.lighter = lighter;
     }
     
     public Location getLocation() {
@@ -56,6 +59,10 @@ public class CustomPortalIgniteEvent extends Event implements Cancellable {
     
     public boolean isLoading() {
     	return load;
+    }
+    
+    public ItemStack getLighter() {
+    	return lighter;
     }
     
     public boolean isCancelled() {

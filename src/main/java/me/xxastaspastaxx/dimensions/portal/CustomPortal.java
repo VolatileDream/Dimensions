@@ -160,10 +160,6 @@ public class CustomPortal {
 		return this.lighter;
 	}
 	
-	public void setLighter(ItemStack lighter) {
-		this.lighter = lighter.getType();
-	}
-	
 	public Axis getAxis() {
 		try {
 			return Axis.valueOf(face.toUpperCase());
@@ -480,7 +476,7 @@ public class CustomPortal {
 	}
 	
 	//Fill the center with he frame blocks
-	public boolean lightPortal(Location loc, IgniteCause cause, LivingEntity igniter, boolean load) {
+	public boolean lightPortal(Location loc, IgniteCause cause, LivingEntity igniter, boolean load, ItemStack lighter) {
 		if (loc.getWorld().equals(getWorld()) && loc.getY()>getWorldHeight()) return false;
 		
 		List<Object> portal = isPortal(loc, true, load);
@@ -489,7 +485,7 @@ public class CustomPortal {
 		@SuppressWarnings("unchecked")
 		List<Block> blocks = (List<Block>) portal.get(1);
 		
-		CustomPortalIgniteEvent event = new CustomPortalIgniteEvent(loc, this, blocks, cause, igniter,load);
+		CustomPortalIgniteEvent event = new CustomPortalIgniteEvent(loc, this, blocks, cause, igniter, load, lighter);
 		Bukkit.getServer().getPluginManager().callEvent(event);
 		if (!event.isCancelled()) {
 			
@@ -579,9 +575,9 @@ public class CustomPortal {
 		}
 	}
 	
-	public void setFrameBlock(Location loc, boolean zAxis, boolean load) {
-		if (loc.getWorld().equals(getWorld()) && loc.getY()>getWorldHeight()) return;
-		if (!load && portalClass.isPortalAtLocation(loc)) return;
+	public PortalFrame setFrameBlock(Location loc, boolean zAxis, boolean load) {
+		if (loc.getWorld().equals(getWorld()) && loc.getY()>getWorldHeight()) return null;
+		if (!load && portalClass.isPortalAtLocation(loc)) return null;
 		
 		PortalFrame frame = new PortalFrame(portalClass,this,loc,zAxis);
 		if (portalClass.addFrame(this,frame)) {
@@ -589,6 +585,7 @@ public class CustomPortal {
 		} else {
 			portalClass.removeLocation(this, loc);
 		}
+		return frame;
 	}
 	
 	public boolean destroy(Location loc, DestroyCause cuase, LivingEntity entity) {
@@ -760,13 +757,13 @@ public class CustomPortal {
 
 	}
 	
-	public void usePortal(LivingEntity p, boolean forceTP) {
+	public void usePortal(LivingEntity p, boolean forceTP, boolean bungee) {
 		if ((p instanceof Player) && portalClass.getPlugin().getWorldGuardFlags()!=null && !portalClass.getPlugin().getWorldGuardFlags().testState((Player) p, p.getLocation(),WorldGuardFlags.UseCustomPortal)) return;
 		
 		//Disable teleportation if player is in the disabled worlds
 		if (getDisabledWorlds().contains(p.getLocation().getWorld())) return;
 		//Call event for custom plugins that want to extend the possibilities of the plugin
-		EntityUseCustomPortalEvent event = new EntityUseCustomPortalEvent(p, p.getLocation(), this, getBuildExitPortal(),forceTP);
+		EntityUseCustomPortalEvent event = new EntityUseCustomPortalEvent(p, p.getLocation(), this, getBuildExitPortal(),forceTP, bungee);
 		Bukkit.getServer().getPluginManager().callEvent(event);
 		if (!event.isCancelled()) {
 			//Calculate teleport location and teleport the player there

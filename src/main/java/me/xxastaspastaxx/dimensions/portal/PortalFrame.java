@@ -137,7 +137,7 @@ public class PortalFrame implements Listener {
 						timerIterator.remove();
 						hold.remove(en);
 						pc.removeFromHold(en);
-						portal.usePortal(en, false);
+						portal.usePortal(en, false, false);
 					}
 			    }
 			    
@@ -156,7 +156,7 @@ public class PortalFrame implements Listener {
 					portal.spawnParticles(loc);
 				}
 				
-				if (portal.getMaterial().isSolid() || portal.getMaterial()==Material.NETHER_PORTAL) {
+				if (portal.getFrame().isSolid() || portal.getFrame()==Material.NETHER_PORTAL) {
 					if (fallingBlock==null || !isSameLocation()) {
 						destroy();
 					}

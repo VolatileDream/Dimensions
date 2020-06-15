@@ -89,7 +89,7 @@ public class PortalListeners implements Listener {
         	if (e.getItem() == null || !lighters.contains(e.getItem().getType()) || !blocks.contains(e.getClickedBlock().getType())) return;
         	Block block = e.getClickedBlock().getRelative(e.getBlockFace());
         	if (!portalClass.isPortalAtLocation(block.getLocation())) {
-        		if (portalClass.lightPortal(block.getLocation(), IgniteCause.FLINT_AND_STEEL, e.getPlayer(), e.getItem().getType())) {
+        		if (portalClass.lightPortal(block.getLocation(), IgniteCause.FLINT_AND_STEEL, e.getPlayer(), e.getItem())) {
             		clicked.put(e.getPlayer(), System.currentTimeMillis());
         		}
         	} else {
@@ -115,7 +115,7 @@ public class PortalListeners implements Listener {
 					if (!Dimensions.isAir(block.getType()) && !frameMaterials.contains(block.getType())) break;
 					CustomPortal portal = portalClass.getPortalAtLocation(block.getLocation());
 					if (portal!=null) {
-						portal.destroy(block.getLocation(), DestroyCause.PLAYER, e.getPlayer());
+						portal.destroy(block.getLocation(), DestroyCause.PLAYER_FRAME, e.getPlayer());
 					}
 				}
 			} catch (IllegalStateException ex) {

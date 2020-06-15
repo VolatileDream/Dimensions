@@ -23,7 +23,7 @@ public class Main extends JavaPlugin {
 	WorldGuardFlags worldGuardFlags;
 	
 	public void onEnable() {
-
+		
 		instance = this;
 		
 		//Setup listeners

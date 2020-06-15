@@ -21,11 +21,13 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.world.WorldSaveEvent;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
+import me.xxastaspastaxx.dimensions.Dimensions;
 import me.xxastaspastaxx.dimensions.Main;
 import me.xxastaspastaxx.dimensions.portal.CustomPortal;
 import me.xxastaspastaxx.dimensions.portal.PortalClass;
@@ -339,6 +341,23 @@ public class PortalFiles implements Listener {
 			lastPortalConfig.save(lastPortalFile);
 		} catch (IOException exception) {
 			exception.printStackTrace();
+		}
+		
+		
+		Object hold = Dimensions.getValue(Dimensions.getPlayerFile(p, "Hold"), "Hold");
+		if (hold!=null && (boolean) hold) {
+			portalClass.getFrameAtLocation(p.getLocation()).addToHold(p);
+			Dimensions.saveValueAs(Dimensions.getPlayerFile(p, "Hold"), "Hold", false);
+		}
+	}
+	
+	
+	@EventHandler
+	public void onQuit(PlayerQuitEvent e) {
+		Player p = e.getPlayer();
+
+		if (portalClass.isOnHold(p)) {
+			Dimensions.saveValueAs(Dimensions.getPlayerFile(p, "Hold"), "Hold", true);
 		}
 	}
 	

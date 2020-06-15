@@ -20,16 +20,18 @@ public class EntityUseCustomPortalEvent extends Event implements Cancellable {
     boolean buildExitPortal;
     
     boolean forceTP;
+    boolean bungee;
     
     Location buildLocation;
     boolean zAxis;
     
-    public EntityUseCustomPortalEvent(LivingEntity entity, Location portalLocation, CustomPortal portal, boolean buildExitPortal,boolean forceTP) {
+    public EntityUseCustomPortalEvent(LivingEntity entity, Location portalLocation, CustomPortal portal, boolean buildExitPortal,boolean forceTP, boolean bungee) {
     	this.entity=entity;
     	this.portalLocation=portalLocation;
     	this.portal=portal;
     	this.buildExitPortal = buildExitPortal;
     	this.forceTP = forceTP;
+    	this.bungee = bungee;
     }
 
     public LivingEntity getEntity() {
@@ -66,6 +68,10 @@ public class EntityUseCustomPortalEvent extends Event implements Cancellable {
     
     public boolean isForcedTeleport() {
     	return forceTP;
+    }
+    
+    public boolean isBungee() {
+    	return bungee;
     }
 
     public boolean isCancelled() {

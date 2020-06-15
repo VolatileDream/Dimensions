@@ -17,6 +17,7 @@ import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.block.BlockIgniteEvent.IgniteCause;
+import org.bukkit.inventory.ItemStack;
 
 import me.xxastaspastaxx.dimensions.Dimensions;
 import me.xxastaspastaxx.dimensions.Main;
@@ -110,7 +111,7 @@ public class PortalClass {
 	}
 	
 	//Check if any of the saved portals can be lit in this location
-	public boolean lightPortal(Location loc, IgniteCause cause, LivingEntity entity, Material lighter) {
+	public boolean lightPortal(Location loc, IgniteCause cause, LivingEntity entity, ItemStack lighter) {
 		
 		debug("Attempting to light a portal at "+loc,2);
 		if ((entity instanceof Player) && pl.getWorldGuardFlags()!=null && !pl.getWorldGuardFlags().testState((Player) entity, loc,WorldGuardFlags.IgniteCustomPortal)) {
@@ -119,8 +120,8 @@ public class PortalClass {
 		}
 
 		for (CustomPortal portal : portals) {
-			if (!portal.isEnabled() || portal.getDisabledWorlds().contains(loc.getWorld()) || portal.getLighter()!=lighter) continue; 
-			if (portal.lightPortal(loc, cause, entity, false)) {
+			if (!portal.isEnabled() || portal.getDisabledWorlds().contains(loc.getWorld()) || portal.getLighter()!=lighter.getType()) continue; 
+			if (portal.lightPortal(loc, cause, entity, false,lighter)) {
 				debug("Portal lit at "+loc,2);
 				return true;
 			}
@@ -355,14 +356,14 @@ public class PortalClass {
 			List<String> lastUsedPortal = lastPortalConfig.getStringList("LastUsedPortal");
 			for (int i=lastUsedWorld.size()-1;i>=0;i--) {
 				if (lastUsedWorld.get(i).contentEquals(to.getName())) {
-					getPortalFromName(lastUsedPortal.get(i)).usePortal(p, true);
+					getPortalFromName(lastUsedPortal.get(i)).usePortal(p, true, false);
 					return;
 				}
 			}
 		} else {
 			for (CustomPortal portal : portals) {
 				if (portal.getWorld()==to) {
-					portal.usePortal(p, true);
+					portal.usePortal(p, true, false);
 					return;
 				}
 			}
