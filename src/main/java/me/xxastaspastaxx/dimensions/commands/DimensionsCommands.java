@@ -2,13 +2,19 @@ package me.xxastaspastaxx.dimensions.commands;
 
 import java.util.AbstractMap.SimpleEntry;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map.Entry;
 
+import org.bukkit.Bukkit;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
+
+import me.xxastaspastaxx.dimensions.Main;
+import me.xxastaspastaxx.dimensions.portal.PortalClass;
+import me.xxastaspastaxx.dimensions.portal.PortalFrame;
 
 public class DimensionsCommands implements CommandExecutor {
 
@@ -19,14 +25,29 @@ public class DimensionsCommands implements CommandExecutor {
 	
 	String pluginCommand = "dim";
 	String pluginName = "Dimensions";
+	String prefix = "§7[§cDimensions§7] ";
 	
-    public DimensionsCommands(Plugin pl) {
+	Plugin pl;
+	PortalClass pc;
+	
+	Plugin dimensionsAddons;
+	
+    public DimensionsCommands(Plugin pl, PortalClass pc) {
+    	this.pl = pl;
+    	this.pc = pc;
+    	
     	//Setup command list
     	addCommand("help", "[page/command]","Display commands list","none",false);
-    	addCommand("adminhelp", "[page/command]","Display admin commands list",true);
+    	addCommand("adminhelp", "[page/command]","Display admin commands list",false);
     	addCommand("perms", "[page/command]","Display permissions for commands",true);
     	addCommand("adminperms", "[page/command]","Display permissions for admin commands",true);
     	
+
+    	addCommand("clear", "<all/world/portal>","Delete all saved portals.",true);
+    	addCommand("reload", "","Reload settings and load new portals.",true);
+    	
+    	
+    	dimensionsAddons = Bukkit.getPluginManager().getPlugin("DimensionsAddons");
     }
     
     @SuppressWarnings({ "rawtypes", "unchecked" })
@@ -122,14 +143,33 @@ public class DimensionsCommands implements CommandExecutor {
 				}
 			}
 			//Commands
-			/*if (args[0].equalsIgnoreCase("reload")) {
+			if (args[0].equalsIgnoreCase("clear") && args.length==2) {
 				if (getPermission(args[0].toLowerCase()).equalsIgnoreCase("none") || p.hasPermission(getPermission(args[0].toLowerCase()))) {
-					Main.getInstance().getPluginLoader().disablePlugin(Main.getInstance());
-					Main.getInstance().getPluginLoader().enablePlugin(Main.getInstance());
-					p.sendMessage("§aPlugin reloaded succesfully");
+					Iterator<PortalFrame> iterator = pc.getFrames().iterator();
+					while (iterator.hasNext()) {
+						PortalFrame frame = iterator.next();
+						if (args[1].equalsIgnoreCase("all") || (args[1].equalsIgnoreCase(frame.getLocation().getWorld().getName())) || (args[1].equalsIgnoreCase(frame.getPortal().getName()))) {
+							frame.destroy(true, false);
+						}
+					}
+					p.sendMessage(prefix+"§aRemoved §c"+args[1]+"§a portals");
 					return true;
 				}
-			}*/
+			}
+			
+			if (args[0].equalsIgnoreCase("reload") && args.length==1) {
+				if (getPermission(args[0].toLowerCase()).equalsIgnoreCase("none") || p.hasPermission(getPermission(args[0].toLowerCase()))) {
+					try {
+						Main.getInstance().files.reload();
+						reloadDimensionsAddons();
+						p.sendMessage(prefix+"§aSuccesfully reloaded files.");
+					} catch (Exception e) {
+						p.sendMessage(prefix+"§cCould not reload files. Check console for errors.");
+						e.printStackTrace();
+					}
+					return true;
+				}
+			}
 		}
 		
 		String suggestion = getSuggestionInHelp(p, args[0]);
@@ -141,7 +181,14 @@ public class DimensionsCommands implements CommandExecutor {
 		return true;
 	}
     
-    public String getCommand(int index) {
+    private void reloadDimensionsAddons() {
+		if (dimensionsAddons==null) return;
+
+		Bukkit.getPluginManager().disablePlugin(dimensionsAddons);
+		Bukkit.getPluginManager().enablePlugin(dimensionsAddons);
+	}
+
+	public String getCommand(int index) {
     	return commands.keySet().toArray()[index].toString();
     }
     public String getDescription(String cmd) {

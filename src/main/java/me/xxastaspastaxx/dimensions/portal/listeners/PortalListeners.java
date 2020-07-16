@@ -1,14 +1,15 @@
 package me.xxastaspastaxx.dimensions.portal.listeners;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
+import org.bukkit.Axis;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
+import org.bukkit.block.data.Orientable;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
@@ -36,10 +37,10 @@ import org.bukkit.event.entity.ExplosionPrimeEvent;
 import org.bukkit.event.inventory.FurnaceBurnEvent;
 import org.bukkit.event.player.PlayerAnimationEvent;
 import org.bukkit.event.player.PlayerAnimationType;
+import org.bukkit.event.player.PlayerChangedWorldEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerRespawnEvent;
-import org.bukkit.event.player.PlayerTeleportEvent;
 import org.bukkit.event.world.PortalCreateEvent;
 import org.bukkit.plugin.Plugin;
 
@@ -47,22 +48,16 @@ import me.xxastaspastaxx.dimensions.Dimensions;
 import me.xxastaspastaxx.dimensions.events.DestroyCause;
 import me.xxastaspastaxx.dimensions.portal.CustomPortal;
 import me.xxastaspastaxx.dimensions.portal.PortalClass;
+import me.xxastaspastaxx.dimensions.portal.PortalFrame;
 
 public class PortalListeners implements Listener {
 	
 	PortalClass portalClass;
-
-	ArrayList<Material> lighters = new ArrayList<Material>();
-	ArrayList<Material> frameMaterials = new ArrayList<Material>();
-	ArrayList<Material> blocks = new ArrayList<Material>();
 	
-	public PortalListeners(Plugin pl, PortalClass portalClass, ArrayList<Material> lighters, ArrayList<Material> frameMaterials, ArrayList<Material> blocks) {
+	public PortalListeners(Plugin pl, PortalClass portalClass) {
 		  
 		this.portalClass = portalClass;
-		this.lighters = lighters;
-		this.frameMaterials = frameMaterials;
-		this.blocks = blocks;
-		  
+		
 		Bukkit.getServer().getPluginManager().registerEvents(this, pl);
 	}
 	
@@ -86,10 +81,11 @@ public class PortalListeners implements Listener {
 		}
 		
         if (e.getAction() == Action.RIGHT_CLICK_BLOCK) {
-        	if (e.getItem() == null || !lighters.contains(e.getItem().getType()) || !blocks.contains(e.getClickedBlock().getType())) return;
+        	if (e.getItem() == null || !portalClass.getLighters().contains(e.getItem().getType()) || !portalClass.getBlocks().contains(e.getClickedBlock().getType())) return;
         	Block block = e.getClickedBlock().getRelative(e.getBlockFace());
         	if (!portalClass.isPortalAtLocation(block.getLocation())) {
         		if (portalClass.lightPortal(block.getLocation(), IgniteCause.FLINT_AND_STEEL, e.getPlayer(), e.getItem())) {
+            		e.setCancelled(true);
             		clicked.put(e.getPlayer(), System.currentTimeMillis());
         		}
         	} else {
@@ -101,26 +97,26 @@ public class PortalListeners implements Listener {
 	@EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
 	public void onPlayerClick(PlayerAnimationEvent e) {
 		
-		if (clicked.containsKey(e.getPlayer())) {
-			boolean cancel = System.currentTimeMillis()-clicked.get(e.getPlayer())<200;
-			clicked.remove(e.getPlayer());
-			if (cancel) return;
+		Player p = e.getPlayer();
+
+		if (clicked.containsKey(p)) {
+			if (System.currentTimeMillis()-clicked.get(p)<500) {
+				return;
+			} else {
+				clicked.remove(p);
+			}
 		}
-		
 		if (e.getAnimationType()==PlayerAnimationType.ARM_SWING) {
-			int rad = 5;
 			try {
-				List<Block> los = e.getPlayer().getLineOfSight(null, rad);
+				List<Block> los = p.getLineOfSight(null, 5);
 				for (Block block : los) {
-					if (!Dimensions.isAir(block.getType()) && !frameMaterials.contains(block.getType())) break;
+					if (!Dimensions.isAir(block.getType()) && !portalClass.getFrameMaterials().contains(block.getType())) break;
 					CustomPortal portal = portalClass.getPortalAtLocation(block.getLocation());
 					if (portal!=null) {
-						portal.destroy(block.getLocation(), DestroyCause.PLAYER_FRAME, e.getPlayer());
+						portal.destroy(block.getLocation(), DestroyCause.PLAYER_FRAME, p);
 					}
 				}
-			} catch (IllegalStateException ex) {
-				
-			}
+			} catch (IllegalStateException ex) {}
 		}
 	}
 	
@@ -231,7 +227,7 @@ public class PortalListeners implements Listener {
 	
 	public boolean onBlockChange(Block block, Entity ent, DestroyCause cause) {
 		
-		if (!blocks.contains(block.getType())) return false;
+		if (!portalClass.getBlocks().contains(block.getType())) return false;
 		
 		boolean destroyed = false;
         for (BlockFace face : new BlockFace[]{BlockFace.WEST, BlockFace.EAST, BlockFace.NORTH, BlockFace.SOUTH, BlockFace.DOWN, BlockFace.UP})
@@ -250,16 +246,14 @@ public class PortalListeners implements Listener {
 	public void onDamage(EntityDamageEvent e) {
 		DamageCause cause = e.getCause();
 		if (!((e.getEntity() instanceof LivingEntity) && (cause.equals(DamageCause.SUFFOCATION) || cause.equals(DamageCause.LAVA) || cause.equals(DamageCause.DROWNING) || cause.equals(DamageCause.HOT_FLOOR)))) return;
-		Location loc = e.getEntity().getLocation().clone();
-		loc = new Location(loc.getWorld(),loc.getBlockX(), loc.getBlockY(), loc.getBlockZ());
-		if (portalClass.isPortalAtLocation(loc)) e.setCancelled(true);
+		if (portalClass.isPortalAtLocation(e.getEntity().getLocation())) e.setCancelled(true);
 	}
 	
 	@EventHandler(ignoreCancelled = true)
-	public void onTeleport(PlayerTeleportEvent e) {
+	public void onWorldChange(PlayerChangedWorldEvent e) {
 		
 		if (!portalClass.isOnHold(e.getPlayer()))
-			portalClass.findBestPathAndUse(e.getPlayer(),e.getFrom().getWorld(),e.getTo().getWorld());
+			portalClass.findBestPathAndUse(e.getPlayer(),e.getFrom(),e.getPlayer().getWorld());
 	}
 
 	@EventHandler(ignoreCancelled = true)
@@ -270,8 +264,14 @@ public class PortalListeners implements Listener {
 	@EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
 	public void onPlayerMove(PlayerMoveEvent e) {
 		if (!e.getFrom().getBlock().equals(e.getTo().getBlock())) {
+			PortalFrame frame = portalClass.getFrameAtLocation(e.getTo());
+			if (frame!=null) {
+				Orientable orientable = (Orientable) Material.NETHER_PORTAL.createBlockData();
+				orientable.setAxis(frame.isZAxis() ? Axis.Z : Axis.X);
+				e.getPlayer().sendBlockChange(e.getTo(), orientable);
+			}
 			if (portalClass.isPortalAtLocation(e.getTo())) {
-				e.getPlayer().sendBlockChange(e.getTo(), Material.NETHER_PORTAL.createBlockData());
+				
 			}
 			if (portalClass.isPortalAtLocation(e.getFrom())) {
 				e.getPlayer().sendBlockChange(e.getFrom(), e.getFrom().getBlock().getBlockData());

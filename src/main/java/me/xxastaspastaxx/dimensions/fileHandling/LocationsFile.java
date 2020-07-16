@@ -45,5 +45,10 @@ public class LocationsFile {
 		}
         
 	}
+
+	public void removePortal(String name) {
+		if (!loadLocations.containsKey(name)) return;
+		loadLocations.remove(name);
+	}
 	
 }

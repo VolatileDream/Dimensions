@@ -3,6 +3,7 @@ package me.xxastaspastaxx.dimensions.portal;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 
 import org.bukkit.Axis;
@@ -127,6 +128,62 @@ public class CustomPortal {
 		this.particlesColor = portal.particlesColor;
 	}
 	
+	public void update(String name, boolean enabled, String displayName, Material material, String face,
+			Material frame, Material lighter, World world, int worldHeight, String ratio, int minPortalWidth, int minPortalHeight,
+			HashMap<EntityType,EntityType> entityTransformation, int[] spawningDelay, HashMap<EntityType,Integer> entitySpawning,
+			boolean buildExitPortal, boolean spawnOnAir, ArrayList<World> disabledWorlds, String particlesColor) {
+		
+		ArrayList<PortalFrame> frames = portalClass.getFrames(this);
+		if (frames==null) return;
+		for (PortalFrame portalFrame : frames) {
+			portalFrame.remove(null);
+		}
+		
+		this.name = name;
+		this.enabled = enabled;
+		this.displayName = displayName;
+		this.material = material;
+		this.face = face;
+		this.frame = frame;
+		this.lighter = lighter;
+		this.world = world;
+		this.worldHeight = worldHeight;
+		this.ratio = ratio;
+		this.minPortalWidth = minPortalWidth;
+		this.minPortalHeight = minPortalHeight;
+		this.entityTransformation = entityTransformation;
+		this.spawningDelay = spawningDelay;
+		this.entitySpawning = entitySpawning;
+		this.buildExitPortal = buildExitPortal;
+		this.spawnOnAir = spawnOnAir;
+		this.disabledWorlds = disabledWorlds;
+		this.particlesColor = particlesColor;
+		
+		Iterator<PortalFrame> framesIter = frames.iterator();
+		while (framesIter.hasNext()) {
+			PortalFrame frame1 = framesIter.next();
+			frame1.reload();
+			List<Object> portal = isPortal(frame1.getLocation(), true, true);
+			if (portal!=null) {
+				frame1.summon(null);
+			} else {
+				framesIter.remove();
+				frame1.destroy(true,false);
+			}
+		}
+	}
+	
+	public void disable() {
+		enabled = false;
+		Iterator<PortalFrame> framesIter = portalClass.getFrames(this).iterator();
+		while (framesIter.hasNext()) {
+			PortalFrame frame1 = framesIter.next();
+			framesIter.remove();
+			frame1.destroy(true,false);
+		}
+		portalClass.frames.remove(this);
+	}
+	
 	public String getName() {
 		return name;
 	}
@@ -209,7 +266,6 @@ public class CustomPortal {
 	
 	public EntityType getEntitySpawn() {
 		for (EntityType type : entitySpawning.keySet()) {
-			//1<=0
 			if (Dimensions.getRandom(1,100)<=entitySpawning.get(type)) {
 				return type;
 			}
@@ -530,34 +586,33 @@ public class CustomPortal {
 		
 	}
 	
-	public BlockData getFrameBlockData(Block block, boolean zAxis) {
-		block.setType(getFrame());
-		BlockData blockData = block.getBlockData();
+	public BlockData getFrameBlockData(boolean zAxis) {
+		BlockData blockData = getFrame().createBlockData();
 		if (zAxis) {
 			if (blockData instanceof Orientable) {
 				Orientable orientable = (Orientable) blockData;
 				orientable.setAxis(Axis.Z);
-				block.setBlockData(orientable);
+				blockData = orientable;
 			} else if (blockData instanceof Directional) {
 				Directional directional = (Directional) blockData;
 				directional.setFacing(BlockFace.NORTH);
-				block.setBlockData(directional);
+				blockData = directional;
 			} else if (blockData instanceof MultipleFacing) {
 				MultipleFacing face = (MultipleFacing) blockData;
 				face.setFace(BlockFace.NORTH, true);
 				face.setFace(BlockFace.SOUTH, true);
-				block.setBlockData(face);
+				blockData = face;
 			}
 		} else {
 			if (blockData instanceof MultipleFacing) {
 				MultipleFacing face = (MultipleFacing) blockData;
 				face.setFace(BlockFace.EAST, true);
 				face.setFace(BlockFace.WEST, true);
-				block.setBlockData(face);
+				blockData = face;
 			}
 		}
 		
-		return block.getBlockData();
+		return blockData;
 	}
 	
 	public boolean isZAxis(Location loc) {
@@ -596,7 +651,7 @@ public class CustomPortal {
 		if (!event.isCancelled()) {
 			PortalFrame frame = portalClass.getFrameAtLocation(loc);
 			if (frame!=null) {
-				return frame.destroy();
+				return frame.destroy(true, true);
 			}
 		}
 		
@@ -618,7 +673,7 @@ public class CustomPortal {
 		if (!loc.getWorld().getName().contentEquals(getWorld().getName())) {
 			teleportLocation = new Location(getWorld(), Math.floor(loc.getX())/getRatio(), loc.getY(), Math.floor(loc.getZ())/getRatio());
 		} else {
-			teleportLocation = new Location(portalClass.getReturnWorld(p, this), Math.floor(loc.getX())*getRatio(), loc.getY(), Math.floor(loc.getZ())*getRatio());
+			teleportLocation = new Location(portalClass.getReturnWorld(p, this, null), Math.floor(loc.getX())*getRatio(), loc.getY(), Math.floor(loc.getZ())*getRatio());
 		}
 		
 		if (event.isForcedTeleport()) return teleportLocation;
@@ -686,7 +741,7 @@ public class CustomPortal {
 	}
 	
 	public Location spiralSearch(Location teleportLocation, boolean zAxis) {
-	    int size=16;
+	    int size=portalClass.getSpotSearchRadius();
 	    for (int siz = 4;siz<=size;siz++) {
 			for (int y=-siz+3;y<=siz-3;y++) {
 				for (int sz=1;sz<=siz;sz++) {
@@ -771,11 +826,12 @@ public class CustomPortal {
 			if (startLocation.getWorld().equals(getWorld()) && startLocation.getY()>getWorldHeight()) startLocation.setY(getWorldHeight()-5);
 			event.setLocation(startLocation);
 			Location teleportLocation = calculateTeleportLocation(p, event);
-			EntityTeleportCustomPortalEvent tpEvent = new EntityTeleportCustomPortalEvent(event,teleportLocation,startLocation);
+			EntityTeleportCustomPortalEvent tpEvent = new EntityTeleportCustomPortalEvent(event,teleportLocation,p.getLocation());
 			Bukkit.getServer().getPluginManager().callEvent(tpEvent);
 			if (!tpEvent.isCancelled()) {
 				if (teleportLocation!=null && !event.isForcedTeleport()) {
 					if (event.getBuildLocation()!=null) buildPortal(event);
+					teleportLocation = teleportLocation.add(0,(event.getBuildLocation()!=null ? 1:0),(event.getBuildLocation()!=null && event.getZaxis()?0.5:0));
 					PortalFrame frame = portalClass.getFrameAtLocation(teleportLocation);
 					if (frame!=null) {
 						frame.addToHold(p);
@@ -795,14 +851,15 @@ public class CustomPortal {
 							entity.setHealth(entity.getHealth());
 							entity.setTicksLived(p.getTicksLived());
 							
-							portalClass.getFrameAtLocation(teleportLocation).addToHold(entity);
+							frame.addToHold(entity);
 							
 							p.remove();
 							return;
 						}
 					}
-					if (p.teleport(teleportLocation.add(0,0,(event.getBuildLocation()!=null && event.getZaxis()?0.5:0)))) {
-						portalClass.addToUsedPortals(p,this);
+
+					portalClass.addToUsedPortals(p,this);
+					if (p.teleport(teleportLocation)) {
 						if (p instanceof Player) ((Player) p).sendBlockChange(p.getLocation(), Material.NETHER_PORTAL.createBlockData());
 					}
 				}
@@ -850,12 +907,5 @@ public class CustomPortal {
 			if (teleportLocation.getBlock().getRelative(BlockFace.DOWN).getType()==Material.WATER || teleportLocation.getBlock().getRelative(BlockFace.DOWN).getType()==Material.LAVA || Dimensions.isAir(teleportLocation.getBlock().getRelative(BlockFace.DOWN).getType())) 
 				setBlock(teleportLocation.getBlock().getRelative(BlockFace.DOWN));
 		}
-		
-		
-		/*for (int i = 5;i>=0;i--) {
-			if (teleportLocation.getBlock().getRelative(BlockFace.DOWN,i).getType()==frame) {
-				teleportLocation.add(0,-i,0);
-			}
-		}*/
 	}
 }

@@ -43,13 +43,19 @@ public class PortalLocations {
 		return locations.get(portal);
 	}
 	
-	public ArrayList<Location> getLocations(CustomPortal portal, World world) { 
+	public ArrayList<Location> getLocations(CustomPortal portal, World world) {
 		if (!locations.containsKey(portal) || !locations.get(portal).containsKey(world)) return new ArrayList<Location>();
 		return locations.get(portal).get(world);
 	}
 	   
 	public void setLocations(HashMap<CustomPortal, HashMap<World, ArrayList<Location>>> locations) { 
 		this.locations = locations; 
+	}
+	
+	public void removePortal(CustomPortal portal) {
+		if (!locations.containsKey(portal)) return;
+		locations.remove(portal);
+		locationFile.removePortal(portal.getName());
 	}
 	   
 	public String toString() { 
@@ -77,6 +83,7 @@ public class PortalLocations {
 	}
 	
 	public CustomPortal getPortal(Location loc) {
+		if (loc.getBlock().getType().isSolid()) return null;
 		
         for (CustomPortal portal : locations.keySet()) {
 			for (World world : locations.get(portal).keySet()) {

@@ -14,5 +14,9 @@ public class Files {
 		//Functions when unloading plugin
 		portalFiles.onDisable();
 	}
+
+	public boolean reload() {
+		return portalFiles.reloadAll();
+	}
 	
 }

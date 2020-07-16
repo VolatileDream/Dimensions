@@ -10,6 +10,8 @@ import org.bukkit.World;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
+import org.bukkit.event.block.BlockIgniteEvent.IgniteCause;
+import org.bukkit.inventory.ItemStack;
 
 import me.xxastaspastaxx.dimensions.portal.CustomPortal;
 import me.xxastaspastaxx.dimensions.portal.PortalClass;
@@ -19,8 +21,25 @@ public class Dimensions {
 	
 	public static PortalClass portalClass;
 	
+	
 	public static ArrayList<CustomPortal> getPortals() {
 		return portalClass.getPortals();
+	}
+	
+	public static ArrayList<Material> getLighters() {
+		return portalClass.getLighters();
+	}
+	
+	public static ArrayList<Material> getFrameMaterials() {
+		return portalClass.getFrameMaterials();
+	}
+	
+	public static ArrayList<Material> getBlocks() {
+		return portalClass.getBlocks();
+	}
+	
+	public static boolean lightPortal(Location loc, IgniteCause cause, LivingEntity entity, ItemStack lighter) {
+		return portalClass.lightPortal(loc, cause, entity, lighter);
 	}
 	
 	public static ArrayList<Location> getPortalsInWorld(CustomPortal portal, World world) {
@@ -61,7 +80,7 @@ public class Dimensions {
 	}
 	
 	public static void removeFrame(CustomPortal portal, PortalFrame frame) {
-		portalClass.removeFrame(portal, frame);
+		portalClass.removeFrame(portal, frame, true);
 	}
 	
 	public static void removeLocation(CustomPortal portal, Location loc) {
@@ -85,7 +104,7 @@ public class Dimensions {
 	}
 	
 	public static World getReturnWorld(Player p, CustomPortal portal) {
-		return portalClass.getReturnWorld(p, portal);
+		return portalClass.getReturnWorld(p, portal, null);
 	}
 
 	public static void addToUsedPortals(Player p, CustomPortal portal) {
@@ -136,4 +155,9 @@ public class Dimensions {
 	public static boolean isAir(Material mat) {
 		return (mat==Material.AIR || mat==Material.CAVE_AIR);
 	}
+	
+	public static ArrayList<PortalFrame> getNearbyPortalFrames(Location loc, int radius) {
+		return portalClass.getNearbyPortalFrames(loc, radius);
+	}
+	
 }

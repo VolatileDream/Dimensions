@@ -64,6 +64,8 @@ public class PortalFiles implements Listener {
 		portalSettings.addDefault("EnableParticles", false);
 		portalSettings.addDefault("EnableMobsTeleportation", false);
 		portalSettings.addDefault("TeleportDelay", 4);
+		portalSettings.addDefault("SearchRadius", 128);
+		portalSettings.addDefault("SafeSpotSearchRadius", 16);
 		
 		
 		portalSettings.options().copyDefaults(true);
@@ -74,93 +76,15 @@ public class PortalFiles implements Listener {
 			e.printStackTrace();
 		}
 
-  	  	//int debugLevel = portalSettings.getInt("DebugLevel");
-  	  	int maxRadius = portalSettings.getInt("MaxRadius");
-  	  	World defaultWorld = Bukkit.getWorld(portalSettings.getString("DefaultWorld"));
-  	  	boolean portalParticles = portalSettings.getBoolean("EnableParticles");
-  	  	boolean enableMobs = portalSettings.getBoolean("EnableMobsTeleportation");
-  	  	int teleportDelay = portalSettings.getInt("TeleportDelay");
+
   	  	
-	  	portalClass = new PortalClass(pl, maxRadius, defaultWorld, portalParticles, enableMobs, teleportDelay, 0);
+	  	portalClass = new PortalClass(pl);
+	  	
+	  	reloadSettings();
 	  	
 	  	
 		//Create and register all portals
-		File portalFolder = new File("plugins/Dimensions/Portals");
-		if (!portalFolder.exists()) portalFolder.mkdir();
-		File[] portals = portalFolder.listFiles();
-		
-
-	  	portalClass.debug("Loading Portals...",2);
-		for (File portal : portals) {
-		  	portalClass.debug("Testing "+portal,2);
-			if (portal.getName().contentEquals("portalLocations.json") || portal.getName().contains(" ")) continue;
-		  	portalClass.debug("Loading "+portal,2);
-			
-			//Add strings added in new version that are missing and will crash plugin
-			fixOutdatedPortalFile(portal);
-
-			YamlConfiguration portalConfig = YamlConfiguration.loadConfiguration(portal);
-			
-			//Load portal settings
-			String name = portal.getName().replace(".yml", "");
-			
-			boolean enabled = portalConfig.getBoolean("Enable");
-			//if (!enabled) continue;
-			String displayName = portalConfig.getString("DisplayName");
-			
-			Material material = Material.matchMaterial(portalConfig.getString("Portal.Block.Material"));
-			String face = portalConfig.getString("Portal.Block.Face");
-			Material frame = Material.matchMaterial(portalConfig.getString("Portal.Frame"));
-			Material lighter = Material.matchMaterial(portalConfig.getString("Portal.Lighter"));
-			int minPortalWidth = portalConfig.getInt("Portal.MinWidth");
-			int minPortalHeight = portalConfig.getInt("Portal.MinHeight");
-			
-			String worldName = portalConfig.getString("World.Name");
-			World world = Bukkit.getWorld(worldName);
-			if (!Bukkit.getServer().getWorlds().contains(world)) {
-				world = Bukkit.getServer().createWorld(new WorldCreator(worldName));
-			}
-			int worldHeight = portalConfig.getInt("World.MaxHeight");
-			String ratio = portalConfig.getString("World.Ratio");
-			
-			HashMap<EntityType,EntityType> entityTransformation = new HashMap<EntityType,EntityType>();
-			for (String entity : portalConfig.getStringList("Entities.Transformation")) {
-				String[] spl = entity.toUpperCase().split("->");
-				entityTransformation.put(EntityType.valueOf(spl[0]), EntityType.valueOf(spl[1]));
-			}
-			
-			String[] spawningDelayString = portalConfig.getString("Entities.Spawning.Delay").split("-");
-			int[] spawningDelay = {Integer.parseInt(spawningDelayString[0]),Integer.parseInt(spawningDelayString[1])};
-			HashMap<EntityType,Integer> entitySpawning = new HashMap<EntityType,Integer>();
-			for (String entity : portalConfig.getStringList("Entities.Spawning.List")) {
-				String[] spl = entity.toUpperCase().split(";");
-				entitySpawning.put(EntityType.valueOf(spl[0]), Integer.parseInt(spl[1]));
-			}
-			
-			boolean buildExitPortal = portalConfig.getBoolean("BuildExitPortal");
-			boolean spawnOnAir = portalConfig.getBoolean("SpawnOnAir");
-			
-			ArrayList<World> disabledWorlds = new ArrayList<World>();
-			for (String disabledWorld : portalConfig.getStringList("DisabledWorlds")) {
-				disabledWorlds.add(Bukkit.getWorld(disabledWorld));
-			}
-			
-			String particlesColor = portalConfig.getString("Portal.ParticlesColor");
-			
-			if (!lighters.contains(lighter)) {
-				lighters.add(lighter);
-			}
-			if (!frameMaterials.contains(frame)) {
-				frameMaterials.add(frame);
-			}
-			if (!blocks.contains(material)) {
-				blocks.add(material);
-			}
-
-			//add the custom portal to the list so it can be used for later calculations
-			createdPortals.add(new CustomPortal(portalClass, name, enabled, displayName, material, face, frame, lighter, world, worldHeight, ratio, minPortalWidth, minPortalHeight, entityTransformation, spawningDelay, entitySpawning, buildExitPortal, spawnOnAir, disabledWorlds, particlesColor, pl));
-		  	portalClass.debug("Loaded "+portal,2);
-		}
+		reloadPortals();
 
 	  	portalClass.debug("Loaded "+ createdPortals.size() +" portals",1);
 		
@@ -185,8 +109,7 @@ public class PortalFiles implements Listener {
 			}
 		}
 		
-		portalClass.setPortals(createdPortals);
-		portalListeners = new PortalListeners(pl, portalClass, lighters, frameMaterials, blocks);
+		portalListeners = new PortalListeners(pl, portalClass);
 		
 		try {
 			createJSON(false);
@@ -315,8 +238,7 @@ public class PortalFiles implements Listener {
 			e.printStackTrace();
 		}
 		for (PortalFrame frame : portalClass.getFrames()) {
-			frame.getLocation().getBlock();
-			frame.remove();
+			frame.remove(null);
 		}
 	}
 	
@@ -346,7 +268,10 @@ public class PortalFiles implements Listener {
 		
 		Object hold = Dimensions.getValue(Dimensions.getPlayerFile(p, "Hold"), "Hold");
 		if (hold!=null && (boolean) hold) {
-			portalClass.getFrameAtLocation(p.getLocation()).addToHold(p);
+			PortalFrame frame = portalClass.getFrameAtLocation(p.getLocation());
+			if (frame!=null) {
+				frame.addToHold(p);
+			}
 			Dimensions.saveValueAs(Dimensions.getPlayerFile(p, "Hold"), "Hold", false);
 		}
 	}
@@ -359,6 +284,10 @@ public class PortalFiles implements Listener {
 		if (portalClass.isOnHold(p)) {
 			Dimensions.saveValueAs(Dimensions.getPlayerFile(p, "Hold"), "Hold", true);
 		}
+		
+		for (PortalFrame frame : portalClass.getFrames()) {
+			frame.remove(p);
+		}
 	}
 	
 	@EventHandler(ignoreCancelled = true)
@@ -369,4 +298,131 @@ public class PortalFiles implements Listener {
 			ex.printStackTrace();
 		}
 	}
+
+	public boolean reloadSettings() {
+		
+		File settings = new File("plugins/Dimensions/Settings.yml");
+		YamlConfiguration portalSettings = YamlConfiguration.loadConfiguration(settings);
+		
+  	  	int debugLevel = portalSettings.getInt("DebugLevel");
+  	  	int maxRadius = portalSettings.getInt("MaxRadius");
+  	  	World defaultWorld = Bukkit.getWorld(portalSettings.getString("DefaultWorld"));
+  	  	boolean portalParticles = portalSettings.getBoolean("EnableParticles");
+  	  	boolean enableMobs = portalSettings.getBoolean("EnableMobsTeleportation");
+  	  	int teleportDelay = portalSettings.getInt("TeleportDelay");
+  	  	int searchRadius = portalSettings.getInt("SearchRadius");
+  	  	int spotSearchRadius = portalSettings.getInt("SafeSpotSearchRadius");
+		
+  	  	portalClass.setSettings(maxRadius, defaultWorld, portalParticles, enableMobs, teleportDelay, debugLevel, searchRadius, spotSearchRadius);
+  	  	
+		return true;
+	}
+
+	public boolean reloadPortals() {
+		File portalFolder = new File("plugins/Dimensions/Portals");
+		if (!portalFolder.exists()) portalFolder.mkdir();
+		File[] portals = portalFolder.listFiles();
+		
+		
+		lighters.clear();
+		frameMaterials.clear();
+		blocks.clear();
+
+	  	portalClass.debug("Loading Portals...",2);
+	  	
+		@SuppressWarnings("unchecked")
+		ArrayList<CustomPortal> oldPortals = (ArrayList<CustomPortal>) createdPortals.clone();
+		
+		for (File portal : portals) {
+		  	portalClass.debug("Testing "+portal,2);
+			if (portal.getName().contentEquals("portalLocations.json") || portal.getName().contains(" ")) continue;
+		  	portalClass.debug("Loading "+portal,2);
+			
+			//Add strings added in new version that are missing and will crash plugin
+			fixOutdatedPortalFile(portal);
+
+			YamlConfiguration portalConfig = YamlConfiguration.loadConfiguration(portal);
+			
+			//Load portal settings
+			String name = portal.getName().replace(".yml", "");
+			
+			boolean enabled = portalConfig.getBoolean("Enable");
+			//if (!enabled) continue;
+			String displayName = portalConfig.getString("DisplayName");
+			
+			Material material = Material.matchMaterial(portalConfig.getString("Portal.Block.Material"));
+			String face = portalConfig.getString("Portal.Block.Face");
+			Material frame = Material.matchMaterial(portalConfig.getString("Portal.Frame"));
+			Material lighter = Material.matchMaterial(portalConfig.getString("Portal.Lighter"));
+			int minPortalWidth = portalConfig.getInt("Portal.MinWidth");
+			int minPortalHeight = portalConfig.getInt("Portal.MinHeight");
+			
+			String worldName = portalConfig.getString("World.Name");
+			World world = Bukkit.getWorld(worldName);
+			if (!Bukkit.getServer().getWorlds().contains(world)) {
+				world = Bukkit.getServer().createWorld(new WorldCreator(worldName));
+			}
+			int worldHeight = portalConfig.getInt("World.MaxHeight");
+			String ratio = portalConfig.getString("World.Ratio");
+			
+			HashMap<EntityType,EntityType> entityTransformation = new HashMap<EntityType,EntityType>();
+			for (String entity : portalConfig.getStringList("Entities.Transformation")) {
+				String[] spl = entity.toUpperCase().split("->");
+				entityTransformation.put(EntityType.valueOf(spl[0]), EntityType.valueOf(spl[1]));
+			}
+			
+			String[] spawningDelayString = portalConfig.getString("Entities.Spawning.Delay").split("-");
+			int[] spawningDelay = {Integer.parseInt(spawningDelayString[0]),Integer.parseInt(spawningDelayString[1])};
+			HashMap<EntityType,Integer> entitySpawning = new HashMap<EntityType,Integer>();
+			for (String entity : portalConfig.getStringList("Entities.Spawning.List")) {
+				String[] spl = entity.toUpperCase().split(";");
+				entitySpawning.put(EntityType.valueOf(spl[0]), Integer.parseInt(spl[1]));
+			}
+			
+			boolean buildExitPortal = portalConfig.getBoolean("BuildExitPortal");
+			boolean spawnOnAir = portalConfig.getBoolean("SpawnOnAir");
+			
+			ArrayList<World> disabledWorlds = new ArrayList<World>();
+			for (String disabledWorld : portalConfig.getStringList("DisabledWorlds")) {
+				disabledWorlds.add(Bukkit.getWorld(disabledWorld));
+			}
+			
+			String particlesColor = portalConfig.getString("Portal.ParticlesColor");
+			
+			if (!lighters.contains(lighter)) {
+				lighters.add(lighter);
+			}
+			if (!frameMaterials.contains(frame)) {
+				frameMaterials.add(frame);
+			}
+			if (!blocks.contains(material)) {
+				blocks.add(material);
+			}
+
+			//add the custom portal to the list so it can be used for later calculations
+			CustomPortal oldPortal = portalClass.getPortalByName(name);
+			if (oldPortal!=null) {
+				oldPortal.update(name, enabled, displayName, material, face, frame, lighter, world, worldHeight, ratio, minPortalWidth, minPortalHeight, entityTransformation, spawningDelay, entitySpawning, buildExitPortal, spawnOnAir, disabledWorlds, particlesColor);
+				oldPortals.remove(oldPortal);
+			} else {
+				createdPortals.add(new CustomPortal(portalClass, name, enabled, displayName, material, face, frame, lighter, world, worldHeight, ratio, minPortalWidth, minPortalHeight, entityTransformation, spawningDelay, entitySpawning, buildExitPortal, spawnOnAir, disabledWorlds, particlesColor, plugin));
+			}
+		  	portalClass.debug("Loaded "+portal,2);
+		}
+		
+		for (CustomPortal portal : oldPortals) {
+			portal.disable();
+			createdPortals.remove(portal);
+		}
+		
+
+		portalClass.setPortals(createdPortals, lighters, frameMaterials, blocks);
+		
+		return true;
+	}
+	
+	public boolean reloadAll() {
+		return reloadSettings() && reloadPortals();
+	}
+
 }

@@ -18,7 +18,6 @@ import me.xxastaspastaxx.dimensions.portal.WorldGuardFlags;
 public class Main extends JavaPlugin {
 	
 	public Files files;	
-	public Listeners listeners;
 
 	WorldGuardFlags worldGuardFlags;
 	
@@ -26,53 +25,57 @@ public class Main extends JavaPlugin {
 		
 		instance = this;
 		
-		//Setup listeners
-        listeners = new Listeners(this);
-		
-		//Config files setup
-		files = new Files(this);
+		try {
+			//Config files setup
+			files = new Files(this);
 	    
-		//World guard
-		if (worldGuardFlags!=null) {
-			worldGuardFlags.enablePlatform();
+			//World guard
+			if (worldGuardFlags!=null) {
+				worldGuardFlags.enablePlatform();
+			}
+			
+			//Commands setup
+			this.getCommand("dimensions").setExecutor(new DimensionsCommands(this,files.portalFiles.getPortalClass()));
+			
+			
+	        int pluginId = 6978;
+	        Metrics metrics = new Metrics(this, pluginId);
+			
+	        metrics.addCustomChart(new Metrics.MultiLineChart("players_and_servers", new Callable<Map<String, Integer>>() {
+	            @Override
+	            public Map<String, Integer> call() throws Exception {
+	                Map<String, Integer> valueMap = new HashMap<>();
+	                valueMap.put("servers", 1);
+	                valueMap.put("players", Bukkit.getOnlinePlayers().size());
+	                return valueMap;
+	            }
+	        }));
+	        
+	        metrics.addCustomChart(new Metrics.DrilldownPie("portal_blocks_frames", () -> {
+	            Map<String, Map<String, Integer>> map = new HashMap<>();
+	            for (CustomPortal portal : files.portalFiles.getPortalClass().getPortals()) {
+	                Map<String, Integer> entry = new HashMap<>();
+	                entry.put(portal.getFrame().toString(),1);
+	                map.put(portal.getMaterial().toString(), entry);
+	            }
+	            return map;
+	        }));
+	        
+	        metrics.addCustomChart(new Metrics.DrilldownPie("portal_blocks_lighters", () -> {
+	            Map<String, Map<String, Integer>> map = new HashMap<>();
+	            for (CustomPortal portal : files.portalFiles.getPortalClass().getPortals()) {
+	                Map<String, Integer> entry = new HashMap<>();
+	                entry.put(portal.getLighter().toString(),1);
+	                map.put(portal.getMaterial().toString(), entry);
+	            }
+	            return map;
+	        }));
+        
+		} catch (Exception e) {
+			System.out.println("There was an error with Dimensions. The plugin has been disabled. More info:");
+			e.printStackTrace();
+			getPluginLoader().disablePlugin(this);
 		}
-		
-		//Commands setup
-		this.getCommand("dimensions").setExecutor(new DimensionsCommands(this));
-		
-		
-        int pluginId = 6978;
-        Metrics metrics = new Metrics(this, pluginId);
-		
-        metrics.addCustomChart(new Metrics.MultiLineChart("players_and_servers", new Callable<Map<String, Integer>>() {
-            @Override
-            public Map<String, Integer> call() throws Exception {
-                Map<String, Integer> valueMap = new HashMap<>();
-                valueMap.put("servers", 1);
-                valueMap.put("players", Bukkit.getOnlinePlayers().size());
-                return valueMap;
-            }
-        }));
-        
-        metrics.addCustomChart(new Metrics.DrilldownPie("portal_blocks_frames", () -> {
-            Map<String, Map<String, Integer>> map = new HashMap<>();
-            for (CustomPortal portal : files.portalFiles.getPortalClass().getPortals()) {
-                Map<String, Integer> entry = new HashMap<>();
-                entry.put(portal.getFrame().toString(),1);
-                map.put(portal.getMaterial().toString(), entry);
-            }
-            return map;
-        }));
-        
-        metrics.addCustomChart(new Metrics.DrilldownPie("portal_blocks_lighters", () -> {
-            Map<String, Map<String, Integer>> map = new HashMap<>();
-            for (CustomPortal portal : files.portalFiles.getPortalClass().getPortals()) {
-                Map<String, Integer> entry = new HashMap<>();
-                entry.put(portal.getLighter().toString(),1);
-                map.put(portal.getMaterial().toString(), entry);
-            }
-            return map;
-        }));
 	}
 	
 	public void onLoad() {
