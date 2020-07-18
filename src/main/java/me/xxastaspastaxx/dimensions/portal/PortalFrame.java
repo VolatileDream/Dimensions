@@ -18,8 +18,10 @@ import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
+import org.bukkit.event.EventHandler;
 import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
+import org.bukkit.event.player.PlayerChangedWorldEvent;
 
 import com.comphenix.packetwrapper.WrapperPlayServerEntityDestroy;
 import com.comphenix.packetwrapper.WrapperPlayServerEntityMetadata;
@@ -300,6 +302,13 @@ public class PortalFrame implements Listener {
 	public void remove(Player p, int x, int z) {
 		if (chunkPos[0]==x && chunkPos[1]==z && p.getWorld().equals(loc.getWorld())) {
 			remove(p);
+		}
+	}
+	
+	@EventHandler
+	public void onWorldChange(PlayerChangedWorldEvent e) {
+		if (e.getFrom().equals(loc.getWorld())) {
+			shown.remove(e.getPlayer());
 		}
 	}
 	
