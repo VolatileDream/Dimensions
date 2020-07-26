@@ -308,7 +308,7 @@ public class PortalFrame implements Listener {
 	@EventHandler
 	public void onWorldChange(PlayerChangedWorldEvent e) {
 		if (e.getFrom().equals(loc.getWorld())) {
-			shown.remove(e.getPlayer());
+			remove(e.getPlayer());
 		}
 	}
 	
@@ -351,5 +351,9 @@ public class PortalFrame implements Listener {
 		}
 		
         return true;
+	}
+
+	public boolean isShown(Player p) {
+		return shown.contains(p);
 	}
 }

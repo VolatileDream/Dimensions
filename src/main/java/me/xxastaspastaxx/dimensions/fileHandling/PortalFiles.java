@@ -75,12 +75,28 @@ public class PortalFiles implements Listener {
   	  	} catch (IOException e) {
 			e.printStackTrace();
 		}
+  	  	
+		File messages = new File("plugins/Dimensions/Messages.yml");
+		YamlConfiguration portalMessages = YamlConfiguration.loadConfiguration(messages);
+		
+
+		portalMessages.addDefault("WorldGuardDenyMessage", "&c&lHey, &7sorry but you can't do that here");
+		
+		
+		portalMessages.options().copyDefaults(true);
+  	  	
+  	  	try {
+  	  	portalMessages.save(messages);
+  	  	} catch (IOException e) {
+			e.printStackTrace();
+		}
 
 
   	  	
 	  	portalClass = new PortalClass(pl);
-	  	
+
 	  	reloadSettings();
+	  	reloadMessages();
 	  	
 	  	
 		//Create and register all portals
@@ -314,6 +330,18 @@ public class PortalFiles implements Listener {
   	  	int spotSearchRadius = portalSettings.getInt("SafeSpotSearchRadius");
 		
   	  	portalClass.setSettings(maxRadius, defaultWorld, portalParticles, enableMobs, teleportDelay, debugLevel, searchRadius, spotSearchRadius);
+  	  	
+		return true;
+	}
+	
+	public boolean reloadMessages() {
+		
+		File settings = new File("plugins/Dimensions/Messages.yml");
+		YamlConfiguration portalSettings = YamlConfiguration.loadConfiguration(settings);
+		
+  	  	String worldGuardDenyMessage = portalSettings.getString("WorldGuardDenyMessage");
+		
+  	  	portalClass.setMessages(worldGuardDenyMessage);
   	  	
 		return true;
 	}

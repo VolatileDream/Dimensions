@@ -644,7 +644,10 @@ public class CustomPortal {
 	}
 	
 	public boolean destroy(Location loc, DestroyCause cuase, LivingEntity entity) {
-		if ((entity instanceof Player) && portalClass.getPlugin().getWorldGuardFlags()!=null && !portalClass.getPlugin().getWorldGuardFlags().testState((Player) entity, loc,WorldGuardFlags.DestroyCustomPortal)) return false;
+		if ((entity instanceof Player) && portalClass.getPlugin().getWorldGuardFlags()!=null && !portalClass.getPlugin().getWorldGuardFlags().testState((Player) entity, loc,WorldGuardFlags.DestroyCustomPortal)) {
+			entity.sendMessage(portalClass.worldGuardDenyMessage);
+			return false;
+		}
 		
 		CustomPortalDestroyEvent event = new CustomPortalDestroyEvent(loc, this, cuase, entity);
 		Bukkit.getServer().getPluginManager().callEvent(event);
@@ -673,8 +676,15 @@ public class CustomPortal {
 		if (!loc.getWorld().getName().contentEquals(getWorld().getName())) {
 			teleportLocation = new Location(getWorld(), Math.floor(loc.getX())/getRatio(), loc.getY(), Math.floor(loc.getZ())/getRatio());
 		} else {
-			teleportLocation = new Location(portalClass.getReturnWorld(p, this, null), Math.floor(loc.getX())*getRatio(), loc.getY(), Math.floor(loc.getZ())*getRatio());
+			teleportLocation = new Location(portalClass.getReturnWorld(p, this, null, true), Math.floor(loc.getX())*getRatio(), loc.getY(), Math.floor(loc.getZ())*getRatio());
 		}
+		
+		if ((p instanceof Player) && portalClass.pl.getWorldGuardFlags()!=null && !portalClass.pl.getWorldGuardFlags().testState((Player) p, loc,WorldGuardFlags.UseCustomPortal)) {
+			portalClass.debug("Player does not have permission to light a portal at current location",2);
+			p.sendMessage(portalClass.worldGuardDenyMessage);
+			return null;
+		}
+
 		
 		if (event.isForcedTeleport()) return teleportLocation;
 		if (teleportLocation.getX()==Double.POSITIVE_INFINITY || teleportLocation.getX()==Double.NEGATIVE_INFINITY || teleportLocation.getZ()==Double.POSITIVE_INFINITY || teleportLocation.getZ()==Double.NEGATIVE_INFINITY) {
@@ -813,7 +823,10 @@ public class CustomPortal {
 	}
 	
 	public void usePortal(LivingEntity p, boolean forceTP, boolean bungee) {
-		if ((p instanceof Player) && portalClass.getPlugin().getWorldGuardFlags()!=null && !portalClass.getPlugin().getWorldGuardFlags().testState((Player) p, p.getLocation(),WorldGuardFlags.UseCustomPortal)) return;
+		if ((p instanceof Player) && portalClass.getPlugin().getWorldGuardFlags()!=null && !portalClass.getPlugin().getWorldGuardFlags().testState((Player) p, p.getLocation(),WorldGuardFlags.UseCustomPortal)) {
+			p.sendMessage(portalClass.worldGuardDenyMessage);
+			return;
+		}
 		
 		//Disable teleportation if player is in the disabled worlds
 		if (getDisabledWorlds().contains(p.getLocation().getWorld())) return;

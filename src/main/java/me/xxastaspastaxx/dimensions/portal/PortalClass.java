@@ -46,6 +46,8 @@ public class PortalClass {
 	int teleportDelay;
 	int searchRadius;
 	int spotSearchRadius;
+	
+	String worldGuardDenyMessage;
 
 	PortalLocations portalLocations;
 	PortalListeners portalListeners;
@@ -75,6 +77,10 @@ public class PortalClass {
 		this.teleportDelay = portalDelay;
 		this.searchRadius = searchRadius;
 		this.spotSearchRadius = spotSearchRadius;
+	}
+	
+	public void setMessages(String worldGuardDenyMessage) {
+		this.worldGuardDenyMessage = worldGuardDenyMessage;
 	}
 	
 	public Main getPlugin() {
@@ -182,6 +188,7 @@ public class PortalClass {
 		
 		debug("Attempting to light a portal at "+loc,2);
 		if ((entity instanceof Player) && pl.getWorldGuardFlags()!=null && !pl.getWorldGuardFlags().testState((Player) entity, loc,WorldGuardFlags.IgniteCustomPortal)) {
+			entity.sendMessage(worldGuardDenyMessage);
 			debug("Player does not have permission to light a portal at current location",2);
 			return false;
 		}
@@ -317,7 +324,7 @@ public class PortalClass {
 	}
 	
 	//Exit system because entering a portal must return you to your previous 
-	public World getReturnWorld(LivingEntity p, CustomPortal portal, World from) {
+	public World getReturnWorld(LivingEntity p, CustomPortal portal, World from, boolean update) {
 		if (!(p instanceof Player)) return getDefaultWorld();
 		
 		File lastPortalFile = new File("plugins/Dimensions/PlayerData/"+p.getName()+"/LastPortal.yml");
@@ -335,16 +342,18 @@ public class PortalClass {
 			if (lastUsedPortal.get(i).contentEquals(portal.getName())) {
 				World world = Bukkit.getWorld(lastUsedWorld.get(i));
 				if (!pWorld.equals(world)) {
-					lastUsedPortal.remove(i);
-					lastUsedWorld.remove(i);
-					
-					lastPortalConfig.set("LastUsedPortal", lastUsedPortal);
-					lastPortalConfig.set("LastUsedWorld", lastUsedWorld);
-					
-					try {
-						lastPortalConfig.save(lastPortalFile);
-					} catch (IOException e) {
-						e.printStackTrace();
+					if (update) {
+						lastUsedPortal.remove(i);
+						lastUsedWorld.remove(i);
+						
+						lastPortalConfig.set("LastUsedPortal", lastUsedPortal);
+						lastPortalConfig.set("LastUsedWorld", lastUsedWorld);
+						
+						try {
+							lastPortalConfig.save(lastPortalFile);
+						} catch (IOException e) {
+							e.printStackTrace();
+						}
 					}
 					
 				} else {
@@ -417,7 +426,7 @@ public class PortalClass {
 			List<String> lastUsedPortal = lastPortalConfig.getStringList("LastUsedPortal");
 			for (int i=lastUsedWorld.size()-1;i>=0;i--) {
 				if (lastUsedWorld.get(i).contentEquals(to.getName())) {
-					getReturnWorld(p, getPortalFromName(lastUsedPortal.get(i)), from);
+					getReturnWorld(p, getPortalFromName(lastUsedPortal.get(i)), from, true);
 					return;
 				}
 			}

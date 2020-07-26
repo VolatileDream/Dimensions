@@ -13,6 +13,8 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.block.BlockIgniteEvent.IgniteCause;
 import org.bukkit.inventory.ItemStack;
 
+import com.sk89q.worldguard.protection.flags.StateFlag;
+
 import me.xxastaspastaxx.dimensions.portal.CustomPortal;
 import me.xxastaspastaxx.dimensions.portal.PortalClass;
 import me.xxastaspastaxx.dimensions.portal.PortalFrame;
@@ -103,8 +105,8 @@ public class Dimensions {
 		return portalClass.getNearestPortalLocation(portal, loc);
 	}
 	
-	public static World getReturnWorld(Player p, CustomPortal portal) {
-		return portalClass.getReturnWorld(p, portal, null);
+	public static World getReturnWorld(Player p, CustomPortal portal, boolean update) {
+		return portalClass.getReturnWorld(p, portal, null, update);
 	}
 
 	public static void addToUsedPortals(Player p, CustomPortal portal) {
@@ -158,6 +160,22 @@ public class Dimensions {
 	
 	public static ArrayList<PortalFrame> getNearbyPortalFrames(Location loc, int radius) {
 		return portalClass.getNearbyPortalFrames(loc, radius);
+	}
+	
+	public static boolean isWorldGuardEnabled() {
+		return portalClass.getPlugin().getWorldGuardFlags()!=null;
+	}
+	
+	public static boolean testState(Player p, Location loc, StateFlag flag) {
+		return isWorldGuardEnabled() && portalClass.getPlugin().getWorldGuardFlags().testState(p, loc, flag);
+	}
+	
+	public static ArrayList<PortalFrame> getPortalsVisibleFromPlayer(Player p) {
+		ArrayList<PortalFrame> result = new  ArrayList<PortalFrame>();
+		for (PortalFrame frame : portalClass.getFrames()) {
+			if (frame.isShown(p)) result.add(frame);
+		}
+		return result;
 	}
 	
 }
