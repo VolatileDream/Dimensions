@@ -5,6 +5,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.UUID;
 
 import org.bukkit.Axis;
 import org.bukkit.Bukkit;
@@ -28,6 +29,7 @@ import org.bukkit.plugin.Plugin;
 import org.bukkit.potion.PotionEffect;
 
 import me.xxastaspastaxx.dimensions.Dimensions;
+import me.xxastaspastaxx.dimensions.Messages;
 import me.xxastaspastaxx.dimensions.events.CustomPortalDestroyEvent;
 import me.xxastaspastaxx.dimensions.events.CustomPortalIgniteEvent;
 import me.xxastaspastaxx.dimensions.events.DestroyCause;
@@ -38,6 +40,8 @@ public class CustomPortal {
 	
 	PortalClass portalClass;
 	Plugin plugin;
+	
+	HashMap<UUID, ArrayList<World>> useHistory = new HashMap<UUID, ArrayList<World>>();
 	
 	String name;
 	
@@ -533,7 +537,15 @@ public class CustomPortal {
 	
 	//Fill the center with he frame blocks
 	public boolean lightPortal(Location loc, IgniteCause cause, LivingEntity igniter, boolean load, ItemStack lighter) {
-		if (loc.getWorld().equals(getWorld()) && loc.getY()>getWorldHeight()) return false;
+		if (getDisabledWorlds().contains(loc.getWorld())) {
+			if (igniter!=null && (igniter instanceof Player)) {
+				String message = Messages.get("disabledWorldMesasge");
+				if (!message.equalsIgnoreCase("")) {
+					igniter.sendMessage(message.replace("%player%", igniter.getName()).replace("%world%", igniter.getWorld().getName()).replace("%portal%", getDisplayName()));
+				}
+			}
+			return false;
+		}
 		
 		List<Object> portal = isPortal(loc, true, load);
 		if (portal==null) return false;
@@ -549,6 +561,16 @@ public class CustomPortal {
 			
 			Location min = portalLocations[0].add(portalLocations[2]);
 			Location max = portalLocations[1].add(portalLocations[3]);
+			
+			if (min.getY()>getWorldHeight() || max.getY()>getWorldHeight()) {
+				if (igniter!=null && (igniter instanceof Player)) {
+					String message = Messages.get("maxHeightExceededDenyMessage");
+					if (!message.equalsIgnoreCase("")) {
+						igniter.sendMessage(message.replace("%player%", igniter.getName()).replace("%world%", igniter.getWorld().getName()).replace("%portal%", getDisplayName()).replace("%maxWorldHeight%", ""+getWorldHeight()));
+					}
+				}
+				return false;
+			}
 			
 			for(int y = (int) Math.min(max.getBlockY(), min.getBlockY()); y <= (int) Math.max(min.getBlockY(), max.getBlockY()); y++) {
 				for(int x = (int) Math.max(max.getBlockX(), min.getBlockX()); x >= (int) Math.min(min.getBlockX(), max.getBlockX()); x--) {
@@ -645,7 +667,7 @@ public class CustomPortal {
 	
 	public boolean destroy(Location loc, DestroyCause cuase, LivingEntity entity) {
 		if ((entity instanceof Player) && portalClass.getPlugin().getWorldGuardFlags()!=null && !portalClass.getPlugin().getWorldGuardFlags().testState((Player) entity, loc,WorldGuardFlags.DestroyCustomPortal)) {
-			entity.sendMessage(portalClass.worldGuardDenyMessage);
+			entity.sendMessage(Messages.get("worldGuardDenyMessage"));
 			return false;
 		}
 		
@@ -673,15 +695,14 @@ public class CustomPortal {
 		
 		
 		//If player is returning plugin will find the world he got into from. If not he will be teleported to the default world
-		if (!loc.getWorld().getName().contentEquals(getWorld().getName())) {
+		if (!loc.getWorld().equals(getWorld())) {
 			teleportLocation = new Location(getWorld(), Math.floor(loc.getX())/getRatio(), loc.getY(), Math.floor(loc.getZ())/getRatio());
 		} else {
-			teleportLocation = new Location(portalClass.getReturnWorld(p, this, null, true), Math.floor(loc.getX())*getRatio(), loc.getY(), Math.floor(loc.getZ())*getRatio());
+			teleportLocation = new Location(getReturnWorld(p, p.getWorld(), false), Math.floor(loc.getX())*getRatio(), loc.getY(), Math.floor(loc.getZ())*getRatio());
 		}
 		
 		if ((p instanceof Player) && portalClass.pl.getWorldGuardFlags()!=null && !portalClass.pl.getWorldGuardFlags().testState((Player) p, loc,WorldGuardFlags.UseCustomPortal)) {
-			portalClass.debug("Player does not have permission to light a portal at current location",2);
-			p.sendMessage(portalClass.worldGuardDenyMessage);
+			p.sendMessage(Messages.get("worldGuardDenyMessage"));
 			return null;
 		}
 
@@ -749,7 +770,7 @@ public class CustomPortal {
 		teleportLocation.setPitch(loc.getPitch());
 		return teleportLocation;
 	}
-	
+
 	public Location spiralSearch(Location teleportLocation, boolean zAxis) {
 	    int size=portalClass.getSpotSearchRadius();
 	    for (int siz = 4;siz<=size;siz++) {
@@ -822,14 +843,14 @@ public class CustomPortal {
 
 	}
 	
-	public void usePortal(LivingEntity p, boolean forceTP, boolean bungee) {
-		if ((p instanceof Player) && portalClass.getPlugin().getWorldGuardFlags()!=null && !portalClass.getPlugin().getWorldGuardFlags().testState((Player) p, p.getLocation(),WorldGuardFlags.UseCustomPortal)) {
-			p.sendMessage(portalClass.worldGuardDenyMessage);
+	public void usePortal(LivingEntity p, boolean forceTP, World fromWorld, boolean bungee) {
+		if (!forceTP && ((p instanceof Player) && portalClass.getPlugin().getWorldGuardFlags()!=null && !portalClass.getPlugin().getWorldGuardFlags().testState((Player) p, p.getLocation(),WorldGuardFlags.UseCustomPortal))) {
+			p.sendMessage(Messages.get("worldGuardDenyMessage"));
 			return;
 		}
 		
 		//Disable teleportation if player is in the disabled worlds
-		if (getDisabledWorlds().contains(p.getLocation().getWorld())) return;
+		if (getDisabledWorlds().contains(fromWorld)) return;
 		//Call event for custom plugins that want to extend the possibilities of the plugin
 		EntityUseCustomPortalEvent event = new EntityUseCustomPortalEvent(p, p.getLocation(), this, getBuildExitPortal(),forceTP, bungee);
 		Bukkit.getServer().getPluginManager().callEvent(event);
@@ -840,43 +861,74 @@ public class CustomPortal {
 			event.setLocation(startLocation);
 			Location teleportLocation = calculateTeleportLocation(p, event);
 			EntityTeleportCustomPortalEvent tpEvent = new EntityTeleportCustomPortalEvent(event,teleportLocation,p.getLocation());
+			tpEvent.setCancelled(teleportLocation==null || event.isForcedTeleport() || getDisabledWorlds().contains(teleportLocation.getWorld()));
 			Bukkit.getServer().getPluginManager().callEvent(tpEvent);
 			if (!tpEvent.isCancelled()) {
-				if (teleportLocation!=null && !event.isForcedTeleport()) {
-					if (event.getBuildLocation()!=null) buildPortal(event);
-					teleportLocation = teleportLocation.add(0,(event.getBuildLocation()!=null ? 1:0),(event.getBuildLocation()!=null && event.getZaxis()?0.5:0));
-					PortalFrame frame = portalClass.getFrameAtLocation(teleportLocation);
-					if (frame!=null) {
-						frame.addToHold(p);
+				if (event.getBuildLocation()!=null) buildPortal(event);
+				teleportLocation = teleportLocation.add(0,(event.getBuildLocation()!=null ? 1:0),(event.getBuildLocation()!=null && event.getZaxis()?0.5:0));
+				PortalFrame frame = portalClass.getFrameAtLocation(teleportLocation);
+				if (frame!=null) {
+					frame.addToHold(p);
+				}
+				
+				if (!(p instanceof Player)) {
+					EntityType type = getEntityTransformation(p.getType());
+					if (type!=null) {
+						LivingEntity entity = (LivingEntity) teleportLocation.getWorld().spawnEntity(teleportLocation,type);
+						
+						for (PotionEffect effect : p.getActivePotionEffects()) { entity.addPotionEffect(effect); }
+						entity.setCanPickupItems(p.getCanPickupItems());
+						entity.setCustomName(p.getCustomName());
+						entity.getEquipment().setArmorContents(p.getEquipment().getArmorContents());
+						entity.getEquipment().setItemInMainHand(p.getEquipment().getItemInMainHand());
+						entity.getEquipment().setItemInOffHand(p.getEquipment().getItemInOffHand());
+						entity.setFireTicks(p.getFireTicks());
+						entity.setHealth(entity.getHealth());
+						entity.setTicksLived(p.getTicksLived());
+						
+						frame.addToHold(entity);
+						
+						p.remove();
+						return;
 					}
-					if (!(p instanceof Player)) {
-						EntityType type = getEntityTransformation(p.getType());
-						if (type!=null) {
-							LivingEntity entity = (LivingEntity) teleportLocation.getWorld().spawnEntity(teleportLocation,type);
-							
-							for (PotionEffect effect : p.getActivePotionEffects()) { entity.addPotionEffect(effect); }
-							entity.setCanPickupItems(p.getCanPickupItems());
-							entity.setCustomName(p.getCustomName());
-							entity.getEquipment().setArmorContents(p.getEquipment().getArmorContents());
-							entity.getEquipment().setItemInMainHand(p.getEquipment().getItemInMainHand());
-							entity.getEquipment().setItemInOffHand(p.getEquipment().getItemInOffHand());
-							entity.setFireTicks(p.getFireTicks());
-							entity.setHealth(entity.getHealth());
-							entity.setTicksLived(p.getTicksLived());
-							
-							frame.addToHold(entity);
-							
-							p.remove();
-							return;
-						}
-					}
-
-					portalClass.addToUsedPortals(p,this);
-					if (p.teleport(teleportLocation)) {
-						if (p instanceof Player) ((Player) p).sendBlockChange(p.getLocation(), Material.NETHER_PORTAL.createBlockData());
+				}
+				
+				getReturnWorld(p, fromWorld, true);
+				addToUsedPortals(p, p.getWorld());
+				
+				if (p.teleport(teleportLocation)) {
+					if (p instanceof Player && frame!=null) {
+						Orientable orientable = (Orientable) Material.NETHER_PORTAL.createBlockData();
+						orientable.setAxis(frame.isZAxis() ? Axis.Z : Axis.X);
+						((Player) p).sendBlockChange(p.getLocation().clone().add(0,1,0), orientable);
 					}
 				}
 			}
+		}
+	}
+
+	public World getReturnWorld(LivingEntity p, World from, boolean update) {
+		
+		ArrayList<World> history = useHistory.get(p.getUniqueId());
+		
+		World world = portalClass.getDefaultWorld();
+		if (from.equals(getWorld())) {
+			if (history != null && !history.isEmpty()) {
+				world = history.get(0);
+				if (update) {
+					history.remove(0);
+					useHistory.put(p.getUniqueId(), history);
+				}
+			}
+		}
+		
+		return world;
+	}
+	
+	public void addToUsedPortals(LivingEntity p, World world) {
+		if (!useHistory.containsKey(p.getUniqueId())) useHistory.put(p.getUniqueId(), new ArrayList<World>());
+		if (!world.equals(getWorld())) {
+			useHistory.get(p.getUniqueId()).add(0, world);
 		}
 	}
 	
@@ -920,5 +972,30 @@ public class CustomPortal {
 			if (teleportLocation.getBlock().getRelative(BlockFace.DOWN).getType()==Material.WATER || teleportLocation.getBlock().getRelative(BlockFace.DOWN).getType()==Material.LAVA || Dimensions.isAir(teleportLocation.getBlock().getRelative(BlockFace.DOWN).getType())) 
 				setBlock(teleportLocation.getBlock().getRelative(BlockFace.DOWN));
 		}
+	}
+
+	public boolean isReturnWorld(Player p, World to) {
+
+		ArrayList<World> history = useHistory.get(p.getUniqueId());
+		
+		World world = portalClass.getDefaultWorld();
+		if (history != null && !history.isEmpty()) {
+			world = history.get(0);
+		}
+
+		return world.equals(to);
+	}
+
+	public void setHistories(HashMap<UUID, ArrayList<World>> useHistory) {
+		this.useHistory = useHistory;
+	}
+	
+	public HashMap<UUID, ArrayList<World>> getHistory() {
+		return useHistory;
+	}
+	
+	public boolean equals(CustomPortal other) {
+		if (other==null) return false;
+		return getName().contentEquals(other.getName());
 	}
 }

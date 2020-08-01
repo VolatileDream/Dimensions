@@ -29,6 +29,7 @@ import com.google.gson.GsonBuilder;
 
 import me.xxastaspastaxx.dimensions.Dimensions;
 import me.xxastaspastaxx.dimensions.Main;
+import me.xxastaspastaxx.dimensions.Messages;
 import me.xxastaspastaxx.dimensions.portal.CustomPortal;
 import me.xxastaspastaxx.dimensions.portal.PortalClass;
 import me.xxastaspastaxx.dimensions.portal.PortalFrame;
@@ -38,9 +39,12 @@ public class PortalFiles implements Listener {
 
 	PortalClass portalClass;
 	PortalListeners portalListeners;
-	
+
 	PortalLocations portalLocations;
 	LocationsFile locationsFile;
+	
+	HistoryWorlds historyWorlds;
+	HistoryFile historyFile;
 	
   	public static ArrayList<CustomPortal> createdPortals = new ArrayList<CustomPortal>();
   	public static ArrayList<Material> lighters = new ArrayList<Material>();
@@ -66,6 +70,8 @@ public class PortalFiles implements Listener {
 		portalSettings.addDefault("TeleportDelay", 4);
 		portalSettings.addDefault("SearchRadius", 128);
 		portalSettings.addDefault("SafeSpotSearchRadius", 16);
+		portalSettings.addDefault("ConsumeItems", true);
+		portalSettings.addDefault("NetherPortalEffect", true);
 		
 		
 		portalSettings.options().copyDefaults(true);
@@ -76,27 +82,9 @@ public class PortalFiles implements Listener {
 			e.printStackTrace();
 		}
   	  	
-		File messages = new File("plugins/Dimensions/Messages.yml");
-		YamlConfiguration portalMessages = YamlConfiguration.loadConfiguration(messages);
-		
-
-		portalMessages.addDefault("WorldGuardDenyMessage", "&c&lHey, &7sorry but you can't do that here");
-		
-		
-		portalMessages.options().copyDefaults(true);
-  	  	
-  	  	try {
-  	  	portalMessages.save(messages);
-  	  	} catch (IOException e) {
-			e.printStackTrace();
-		}
-
-
-  	  	
 	  	portalClass = new PortalClass(pl);
 
 	  	reloadSettings();
-	  	reloadMessages();
 	  	
 	  	
 		//Create and register all portals
@@ -104,47 +92,36 @@ public class PortalFiles implements Listener {
 
 	  	portalClass.debug("Loaded "+ createdPortals.size() +" portals",1);
 		
-		
-		for (Player p : Bukkit.getServer().getOnlinePlayers()) {
-			//This is used to return players to the previous world
-			File lastPortalFile = new File("plugins/Dimensions/PlayerData/"+p.getName()+"/LastPortal.yml");
-			YamlConfiguration lastPortalConfig = YamlConfiguration.loadConfiguration(lastPortalFile);
-			
-			//Portal name
-	          List<String> lup = lastPortalConfig.getStringList("LastUsedPortal");
-	          lastPortalConfig.set("LastUsedPortal", lup);
-
-	        //Worlds name
-	          List<String> luw = lastPortalConfig.getStringList("LastUsedWorld");
-	          lastPortalConfig.set("LastUsedWorld", luw);
-
-			try {
-				lastPortalConfig.save(lastPortalFile);
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
-		}
-		
 		portalListeners = new PortalListeners(pl, portalClass);
 		
 		try {
-			createJSON(false);
-			LocationsFile locationsFile = readJSON();
+			writeJSONLocations(false);
+			LocationsFile locationsFile = readJSONLocations();
 			while (locationsFile==null) {
-				createJSON(true);
-				locationsFile = readJSON();
+				writeJSONLocations(true);
+				locationsFile = readJSONLocations();
 			}
-			PortalLocations portalLocations = new PortalLocations(portalClass,locationsFile);
-			
-			portalLocations.convertStrings(locationsFile.getLocations());
-	        
-	        this.portalLocations = portalLocations;
+
 	        this.locationsFile = locationsFile;
-	        portalClass.setPortalLocations(portalLocations,portalListeners);
+	        this.portalLocations = new PortalLocations(portalClass, locationsFile);
+	        portalLocations.convertStrings(locationsFile.getLocations());
+	        portalClass.setPortalLocations(portalLocations, locationsFile,portalListeners);
+	        
+	        
+			writeJSONHistories(false);
+			HistoryFile historyFile = readJSONHistories();
+			while (historyFile==null) {
+				writeJSONHistories(true);
+				historyFile = readJSONHistories();
+			}
+
+	        this.historyFile = historyFile;
+	        this.historyWorlds = new HistoryWorlds(portalClass, historyFile);
+	        historyWorlds.convertStrings(historyFile.getHistories());
+	        portalClass.setPlayerHistories(historyWorlds);
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-        
 
 	    Bukkit.getServer().getPluginManager().registerEvents(this, pl);
 	}
@@ -199,7 +176,7 @@ public class PortalFiles implements Listener {
 		}
 	}
 	
-	private void createJSON(boolean recreate) {
+	private void writeJSONLocations(boolean recreate) {
 		try {
 			File file = new File("plugins/Dimensions/Portals/portalLocations.json");
 			if (!file.getParentFile().exists()) {
@@ -220,23 +197,63 @@ public class PortalFiles implements Listener {
 		}
 	}
 	
-	private void writeJSON(PortalLocations portalLocations, LocationsFile locationsFile) throws IOException { 
+	private void writeJSONHistories(boolean recreate) {
+		try {
+			File file = new File("plugins/Dimensions/PlayerData/playerHistories.json");
+			if (!file.getParentFile().exists()) {
+				file.getParentFile().mkdirs();
+			}
+			if (!file.exists() || recreate) {
+				FileWriter fw = new FileWriter(file);
+			    fw.write("{}");
+			    fw.flush();
+			    fw.close();
+			}
+		} catch (FileNotFoundException e) {
+			e.printStackTrace();
+		} catch (UnsupportedEncodingException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+	
+	private void writeJSONLocations(LocationsFile locationsFile) throws IOException {
 		GsonBuilder builder = new GsonBuilder(); 
 		Gson gson = builder.create(); 
 		FileWriter writer = new FileWriter("plugins/Dimensions/Portals/portalLocations.json");
-		portalLocations.save();
+		locationsFile.save(portalLocations.getLocations());
 		writer.write(gson.toJson(locationsFile));   
 		writer.close(); 
-	}  
+	}
+	
+	private void writeJSONHistories(HistoryFile historyFile) throws IOException {
+		
+		GsonBuilder builder = new GsonBuilder(); 
+		Gson gson = builder.create(); 
+		FileWriter writer = new FileWriter("plugins/Dimensions/PlayerData/playerHistories.json");
+		historyWorlds.save();
+		writer.write(gson.toJson(historyFile));   
+		writer.close(); 
+	}
 	   
-	private LocationsFile readJSON() throws FileNotFoundException { 
+	private LocationsFile readJSONLocations() throws FileNotFoundException { 
 		GsonBuilder builder = new GsonBuilder(); 
 		Gson gson = builder.create(); 
 		BufferedReader bufferedReader = new BufferedReader(new FileReader("plugins/Dimensions/Portals/portalLocations.json"));   
 
 		LocationsFile locationsFile = gson.fromJson(bufferedReader, LocationsFile.class); 
 		return locationsFile; 
-	} 
+	}
+	
+	private HistoryFile readJSONHistories() throws FileNotFoundException { 
+		GsonBuilder builder = new GsonBuilder(); 
+		Gson gson = builder.create(); 
+		BufferedReader bufferedReader = new BufferedReader(new FileReader("plugins/Dimensions/PlayerData/playerHistories.json"));   
+
+		HistoryFile historyFile = gson.fromJson(bufferedReader, HistoryFile.class); 
+		return historyFile; 
+	}
 	
 	public PortalClass getPortalClass() {
 		return portalClass;
@@ -248,39 +265,24 @@ public class PortalFiles implements Listener {
 	
 	public void onDisable() {
 		
-		try {
-			writeJSON(portalLocations, locationsFile);
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
+		save();
 		for (PortalFrame frame : portalClass.getFrames()) {
 			frame.remove(null);
 		}
 	}
 	
+	public void save() {
+		try {
+			writeJSONLocations(locationsFile);
+			writeJSONHistories(historyFile);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
 	
 	@EventHandler
 	public void onJoin(PlayerJoinEvent e) {
 		Player p = e.getPlayer();
-
-		//This is used to return players to the previous world
-		File lastPortalFile = new File("plugins/Dimensions/PlayerData/"+p.getName()+"/LastPortal.yml");
-		YamlConfiguration lastPortalConfig = YamlConfiguration.loadConfiguration(lastPortalFile);
-		
-		//Portal name
-          List<String> lup = lastPortalConfig.getStringList("LastUsedPortal");
-          lastPortalConfig.set("LastUsedPortal", lup);
-
-        //Worlds name
-          List<String> luw = lastPortalConfig.getStringList("LastUsedWorld");
-          lastPortalConfig.set("LastUsedWorld", luw);
-
-		try {
-			lastPortalConfig.save(lastPortalFile);
-		} catch (IOException exception) {
-			exception.printStackTrace();
-		}
-		
 		
 		Object hold = Dimensions.getValue(Dimensions.getPlayerFile(p, "Hold"), "Hold");
 		if (hold!=null && (boolean) hold) {
@@ -309,7 +311,8 @@ public class PortalFiles implements Listener {
 	@EventHandler(ignoreCancelled = true)
 	public void onSave(WorldSaveEvent e) {
 		try {
-			writeJSON(portalLocations, locationsFile);
+			writeJSONLocations(locationsFile);
+			writeJSONHistories(historyFile);
 		} catch (IOException ex) {
 			ex.printStackTrace();
 		}
@@ -328,20 +331,10 @@ public class PortalFiles implements Listener {
   	  	int teleportDelay = portalSettings.getInt("TeleportDelay");
   	  	int searchRadius = portalSettings.getInt("SearchRadius");
   	  	int spotSearchRadius = portalSettings.getInt("SafeSpotSearchRadius");
+  	  	boolean consumeItems = portalSettings.getBoolean("ConsumeItems");
+  	  	boolean netherPortalEffect = portalSettings.getBoolean("NetherPortalEffect");
 		
-  	  	portalClass.setSettings(maxRadius, defaultWorld, portalParticles, enableMobs, teleportDelay, debugLevel, searchRadius, spotSearchRadius);
-  	  	
-		return true;
-	}
-	
-	public boolean reloadMessages() {
-		
-		File settings = new File("plugins/Dimensions/Messages.yml");
-		YamlConfiguration portalSettings = YamlConfiguration.loadConfiguration(settings);
-		
-  	  	String worldGuardDenyMessage = portalSettings.getString("WorldGuardDenyMessage");
-		
-  	  	portalClass.setMessages(worldGuardDenyMessage);
+  	  	portalClass.setSettings(maxRadius, defaultWorld, portalParticles, enableMobs, teleportDelay, debugLevel, searchRadius, spotSearchRadius, consumeItems, netherPortalEffect);
   	  	
 		return true;
 	}
@@ -362,9 +355,10 @@ public class PortalFiles implements Listener {
 		ArrayList<CustomPortal> oldPortals = (ArrayList<CustomPortal>) createdPortals.clone();
 		
 		for (File portal : portals) {
-		  	portalClass.debug("Testing "+portal,2);
-			if (portal.getName().contentEquals("portalLocations.json") || portal.getName().contains(" ")) continue;
-		  	portalClass.debug("Loading "+portal,2);
+			String fileName = portal.getName();
+		  	portalClass.debug("Testing "+fileName,2);
+			if (fileName.contentEquals("portalLocations.json") || fileName.contains(" ")) continue;
+		  	portalClass.debug("Loading "+fileName,2);
 			
 			//Add strings added in new version that are missing and will crash plugin
 			fixOutdatedPortalFile(portal);
@@ -372,7 +366,7 @@ public class PortalFiles implements Listener {
 			YamlConfiguration portalConfig = YamlConfiguration.loadConfiguration(portal);
 			
 			//Load portal settings
-			String name = portal.getName().replace(".yml", "");
+			String name = fileName.replace(".yml", "");
 			
 			boolean enabled = portalConfig.getBoolean("Enable");
 			//if (!enabled) continue;
@@ -435,7 +429,7 @@ public class PortalFiles implements Listener {
 			} else {
 				createdPortals.add(new CustomPortal(portalClass, name, enabled, displayName, material, face, frame, lighter, world, worldHeight, ratio, minPortalWidth, minPortalHeight, entityTransformation, spawningDelay, entitySpawning, buildExitPortal, spawnOnAir, disabledWorlds, particlesColor, plugin));
 			}
-		  	portalClass.debug("Loaded "+portal,2);
+		  	portalClass.debug("Loaded "+fileName,2);
 		}
 		
 		for (CustomPortal portal : oldPortals) {
@@ -450,7 +444,7 @@ public class PortalFiles implements Listener {
 	}
 	
 	public boolean reloadAll() {
-		return reloadSettings() && reloadPortals();
+		return reloadSettings() && reloadPortals() && Messages.reload();
 	}
 
 }

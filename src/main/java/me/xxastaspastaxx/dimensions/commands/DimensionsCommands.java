@@ -13,6 +13,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
 
 import me.xxastaspastaxx.dimensions.Main;
+import me.xxastaspastaxx.dimensions.Messages;
 import me.xxastaspastaxx.dimensions.portal.PortalClass;
 import me.xxastaspastaxx.dimensions.portal.PortalFrame;
 
@@ -25,7 +26,7 @@ public class DimensionsCommands implements CommandExecutor {
 	
 	String pluginCommand = "dim";
 	String pluginName = "Dimensions";
-	String prefix = "§7[§cDimensions§7] ";
+	String prefix = Messages.get("prefix")+" ";
 	
 	Plugin pl;
 	PortalClass pc;
@@ -45,6 +46,7 @@ public class DimensionsCommands implements CommandExecutor {
 
     	addCommand("clear", "<all/world/portal>","Delete all saved portals.",true);
     	addCommand("reload", "","Reload settings and load new portals.",true);
+    	addCommand("history", "clear","Clear portal player history",true);
     	
     	
     	dimensionsAddons = Bukkit.getPluginManager().getPlugin("DimensionsAddons");
@@ -72,13 +74,13 @@ public class DimensionsCommands implements CommandExecutor {
 		Player p = (Player) sender;
 			
 		if (args.length==0) {
-			if (getPermission("help").equalsIgnoreCase("none") || p.hasPermission(getPermission("help"))) {
+			if (hasPermission(p, "help")) {
 				p.sendMessage(getHelp(1, false));
 				return true;
 			}
 		} else {
 			if (args[0].equalsIgnoreCase("help")) {
-				if (getPermission(args[0].toLowerCase()).equalsIgnoreCase("none") || p.hasPermission(getPermission(args[0].toLowerCase()))) {
+				if (hasPermission(p, args[0].toLowerCase())) {
 					if (args.length==1) {
 						p.sendMessage(getHelp(1, false));
 						return true;
@@ -94,7 +96,7 @@ public class DimensionsCommands implements CommandExecutor {
 				}
 			}
 			if (args[0].equalsIgnoreCase("adminhelp")) {
-				if (getPermission(args[0].toLowerCase()).equalsIgnoreCase("none") || p.hasPermission(getPermission(args[0].toLowerCase()))) {
+				if (hasPermission(p, args[0].toLowerCase())) {
 					if (args.length==1) {
 						p.sendMessage(getHelp(1, true));
 						return true;
@@ -111,7 +113,7 @@ public class DimensionsCommands implements CommandExecutor {
 			}
 			
 			if (args[0].equalsIgnoreCase("perms")) {
-				if (getPermission(args[0].toLowerCase()).equalsIgnoreCase("none") || p.hasPermission(getPermission(args[0].toLowerCase()))) {
+				if (hasPermission(p, args[0].toLowerCase())) {
 					if (args.length==1) {
 						p.sendMessage(getPermissions(1, false));
 						return true;
@@ -127,7 +129,7 @@ public class DimensionsCommands implements CommandExecutor {
 				}
 			}
 			if (args[0].equalsIgnoreCase("adminperms")) {
-				if (getPermission(args[0].toLowerCase()).equalsIgnoreCase("none") || p.hasPermission(getPermission(args[0].toLowerCase()))) {
+				if (hasPermission(p, args[0].toLowerCase())) {
 					if (args.length==1) {
 						p.sendMessage(getPermissions(1, true));
 						return true;
@@ -144,7 +146,7 @@ public class DimensionsCommands implements CommandExecutor {
 			}
 			//Commands
 			if (args[0].equalsIgnoreCase("clear") && args.length==2) {
-				if (getPermission(args[0].toLowerCase()).equalsIgnoreCase("none") || p.hasPermission(getPermission(args[0].toLowerCase()))) {
+				if (hasPermission(p, args[0].toLowerCase())) {
 					Iterator<PortalFrame> iterator = pc.getFrames().iterator();
 					while (iterator.hasNext()) {
 						PortalFrame frame = iterator.next();
@@ -158,7 +160,7 @@ public class DimensionsCommands implements CommandExecutor {
 			}
 			
 			if (args[0].equalsIgnoreCase("reload") && args.length==1) {
-				if (getPermission(args[0].toLowerCase()).equalsIgnoreCase("none") || p.hasPermission(getPermission(args[0].toLowerCase()))) {
+				if (hasPermission(p, args[0].toLowerCase())) {
 					try {
 						Main.getInstance().files.reload();
 						reloadDimensionsAddons();
@@ -170,18 +172,30 @@ public class DimensionsCommands implements CommandExecutor {
 					return true;
 				}
 			}
+			
+			if (args[0].equalsIgnoreCase("history") && args.length==2 && args[1].equalsIgnoreCase("clear")) {
+				if (hasPermission(p, args[0].toLowerCase())) {
+					pc.clearHistory();
+					p.sendMessage(prefix+"§aCleared portal history.");
+					return true;
+				}
+			}
 		}
 		
 		String suggestion = getSuggestionInHelp(p, args[0]);
 		if (suggestion!=null) {
-			p.sendMessage("§7Did you mean §c/"+ pluginCommand +" "+suggestion+"§7?");
+			p.sendMessage(prefix+"§7Did you mean §c/"+ pluginCommand +" "+suggestion+"§7?");
 		} else {
-			p.sendMessage("§7Unknown command");
+			p.sendMessage(prefix+"§7Unknown command");
 		}
 		return true;
 	}
     
-    private void reloadDimensionsAddons() {
+    private boolean hasPermission(Player p, String command) {
+		return getPermission(command).equalsIgnoreCase("none") || p.hasPermission(getPermission(command));
+	}
+
+	private void reloadDimensionsAddons() {
 		if (dimensionsAddons==null) return;
 
 		Bukkit.getPluginManager().disablePlugin(dimensionsAddons);
@@ -345,7 +359,7 @@ public class DimensionsCommands implements CommandExecutor {
     	
     	for (String cmd : commands.keySet()) {
     		if (cmd.toLowerCase().startsWith(arg.toLowerCase())) {
-    			if (getPermission(cmd).equalsIgnoreCase("none") || p.hasPermission(getPermission(cmd))) return cmd+" "+getArgs(cmd);
+    			if (hasPermission(p, cmd)) return cmd+" "+getArgs(cmd);
     		}
     	}
     	

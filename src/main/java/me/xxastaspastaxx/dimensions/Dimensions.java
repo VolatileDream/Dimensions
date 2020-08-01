@@ -106,11 +106,11 @@ public class Dimensions {
 	}
 	
 	public static World getReturnWorld(Player p, CustomPortal portal, boolean update) {
-		return portalClass.getReturnWorld(p, portal, null, update);
+		return portal.getReturnWorld(p, p.getWorld(), update);
 	}
 
 	public static void addToUsedPortals(Player p, CustomPortal portal) {
-		portalClass.addToUsedPortals(p, portal);
+		portal.addToUsedPortals(p, p.getWorld());
 	}
 	
 	public static boolean isNetherPortalEnabled() {
@@ -122,7 +122,25 @@ public class Dimensions {
 	}
 	
 	public static File getPlayerFile(Player p, String path) {
+		File playerDataDirectory = new File("plugins/Dimensions/PlayerData/");
+		File playerFileDirectory = new File("plugins/Dimensions/PlayerData/"+p.getName()+"/");
 		File file = new File("plugins/Dimensions/PlayerData/"+p.getName()+"/"+path+".yml");
+		
+		if (!playerDataDirectory.exists()) {
+			playerDataDirectory.mkdir();
+		}
+		if (!playerFileDirectory.exists()) {
+			playerFileDirectory.mkdir();
+		}
+		if (!file.exists()) {
+			try {
+				file.createNewFile();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
+		
+		
 		if (!file.exists()) {
 			try {
 				file.createNewFile();

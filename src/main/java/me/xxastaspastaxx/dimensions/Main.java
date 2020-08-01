@@ -26,6 +26,9 @@ public class Main extends JavaPlugin {
 		instance = this;
 		
 		try {
+
+		  	Messages.load();
+			
 			//Config files setup
 			files = new Files(this);
 	    

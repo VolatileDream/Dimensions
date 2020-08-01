@@ -5,6 +5,7 @@ import java.util.List;
 
 import org.bukkit.Axis;
 import org.bukkit.Bukkit;
+import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
@@ -37,11 +38,14 @@ import org.bukkit.event.entity.ExplosionPrimeEvent;
 import org.bukkit.event.inventory.FurnaceBurnEvent;
 import org.bukkit.event.player.PlayerAnimationEvent;
 import org.bukkit.event.player.PlayerAnimationType;
+import org.bukkit.event.player.PlayerBucketEmptyEvent;
 import org.bukkit.event.player.PlayerChangedWorldEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
-import org.bukkit.event.player.PlayerRespawnEvent;
 import org.bukkit.event.world.PortalCreateEvent;
+import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.Damageable;
+import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.plugin.Plugin;
 
 import me.xxastaspastaxx.dimensions.Dimensions;
@@ -66,13 +70,12 @@ public class PortalListeners implements Listener {
 	@EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
 	public void onPortalInteract(PlayerInteractEvent e) {
 		
-		if (e.getAction() == Action.RIGHT_CLICK_BLOCK || e.getAction() == Action.RIGHT_CLICK_AIR) {
+		if (e.getAction() == Action.RIGHT_CLICK_BLOCK || e.getAction() == Action.RIGHT_CLICK_AIR || e.getAction() == Action.LEFT_CLICK_BLOCK) {
 			try {
-				int rad = (int) ((e.getAction() == Action.RIGHT_CLICK_BLOCK)?Math.min(Math.ceil(e.getClickedBlock().getLocation().distance(e.getPlayer().getLocation())),5):5);
+				int rad = (int) ((e.getAction() == Action.RIGHT_CLICK_BLOCK || e.getAction() == Action.LEFT_CLICK_BLOCK)?Math.min(Math.ceil(e.getClickedBlock().getLocation().distance(e.getPlayer().getEyeLocation())),5):5);
 				List<Block> los = e.getPlayer().getLineOfSight(null, rad);
 				for (Block block : los) {
-					CustomPortal portal = portalClass.getPortalAtLocation(block.getLocation());
-					if (portal!=null) {
+					if (portalClass.isPortalAtLocation(block.getLocation())) {
 						e.setCancelled(true);
 						break;
 					}
@@ -85,13 +88,43 @@ public class PortalListeners implements Listener {
         	Block block = e.getClickedBlock().getRelative(e.getBlockFace());
         	if (!portalClass.isPortalAtLocation(block.getLocation())) {
         		if (portalClass.lightPortal(block.getLocation(), IgniteCause.FLINT_AND_STEEL, e.getPlayer(), e.getItem())) {
-            		e.setCancelled(true);
+					e.setCancelled(true);
+					if (portalClass.consumeItems() && e.getPlayer().getGameMode()!=GameMode.CREATIVE) {
+						ItemStack item = e.getItem();
+						if (item.getType().toString().contains("BUCKET") && item.getType()==Material.BUCKET) {
+							item.setType(Material.BUCKET);
+						} else if (item.getItemMeta() instanceof Damageable) {
+							Damageable dmg = (Damageable) item.getItemMeta();
+							dmg.setDamage(dmg.getDamage()+1);
+							item.setItemMeta((ItemMeta) dmg);
+							if (dmg.getDamage()>=item.getType().getMaxDurability()) {
+								item.setAmount(item.getAmount()-1);
+							}
+						} else {
+							item.setAmount(item.getAmount()-1);
+						}
+							
+					}
             		clicked.put(e.getPlayer(), System.currentTimeMillis());
         		}
         	} else {
         		e.setCancelled(true);
         	}
         }
+	}
+	
+	@EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
+	public void onBucketEmpty(PlayerBucketEmptyEvent e) {
+		try {
+			int rad = (int) Math.ceil(e.getBlockClicked().getRelative(e.getBlockFace()).getLocation().distance(e.getPlayer().getEyeLocation()));
+			List<Block> los = e.getPlayer().getLineOfSight(null, rad);
+			for (Block block : los) {
+				if (portalClass.isPortalAtLocation(block.getLocation())) {
+					e.setCancelled(true);
+					break;
+				}
+			}
+		} catch (IllegalStateException ex) {}
 	}
 	
 	@EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
@@ -127,7 +160,7 @@ public class PortalListeners implements Listener {
 			if (exploder.getWorld()!=loc.getWorld() || exploder.getLocation().distance(loc)>e.getRadius()+2) continue;
 			CustomPortal portal = portalClass.getPortalAtLocation(loc);
 			if (portal!=null) {
-				if (!portal.destroy(loc,DestroyCause.ENTITY, (LivingEntity) exploder)) {
+				if (!portal.destroy(loc,DestroyCause.ENTITY, (exploder instanceof LivingEntity)?(LivingEntity) exploder:null)) {
 					e.setCancelled(true);
 				}
 			}
@@ -255,26 +288,28 @@ public class PortalListeners implements Listener {
 		if (!portalClass.isOnHold(e.getPlayer()))
 			portalClass.findBestPathAndUse(e.getPlayer(),e.getFrom(),e.getPlayer().getWorld());
 	}
-
-	@EventHandler(ignoreCancelled = true)
-	public void onRespawn(PlayerRespawnEvent e) {
-		portalClass.findBestPathAndUse(e.getPlayer(),e.getPlayer().getWorld(),e.getRespawnLocation().getWorld());
-	}
+	
+	/*@EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+	public void onNetherPortalUse(PlayerTeleportEvent e) {
+		if (e.getCause().equals(TeleportCause.NETHER_PORTAL)) {
+			
+		}
+	}*/
 	
 	@EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
 	public void onPlayerMove(PlayerMoveEvent e) {
-		if (!e.getFrom().getBlock().equals(e.getTo().getBlock())) {
-			PortalFrame frame = portalClass.getFrameAtLocation(e.getTo());
+		if (!portalClass.enableNetherPortalEffect()) return;
+		Location fromEye = e.getFrom().clone().add(0,1,0);
+		Location toEye = e.getTo().clone().add(0,1,0);
+		if (!fromEye.getBlock().equals(toEye.getBlock())) {
+			PortalFrame frame = portalClass.getFrameAtLocation(toEye);
 			if (frame!=null) {
 				Orientable orientable = (Orientable) Material.NETHER_PORTAL.createBlockData();
 				orientable.setAxis(frame.isZAxis() ? Axis.Z : Axis.X);
-				e.getPlayer().sendBlockChange(e.getTo(), orientable);
+				e.getPlayer().sendBlockChange(toEye, orientable);
 			}
-			if (portalClass.isPortalAtLocation(e.getTo())) {
-				
-			}
-			if (portalClass.isPortalAtLocation(e.getFrom())) {
-				e.getPlayer().sendBlockChange(e.getFrom(), e.getFrom().getBlock().getBlockData());
+			if (portalClass.isPortalAtLocation(fromEye)) {
+				e.getPlayer().sendBlockChange(fromEye, fromEye.getBlock().getBlockData());
 			}
 		}
 	}

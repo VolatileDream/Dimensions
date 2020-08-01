@@ -1,19 +1,15 @@
 
 package me.xxastaspastaxx.dimensions.portal;
 
-import java.io.File;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.List;
+import java.util.UUID;
 
-import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.block.BlockFace;
-import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.block.BlockIgniteEvent.IgniteCause;
@@ -28,6 +24,9 @@ import com.comphenix.protocol.events.PacketListener;
 
 import me.xxastaspastaxx.dimensions.Dimensions;
 import me.xxastaspastaxx.dimensions.Main;
+import me.xxastaspastaxx.dimensions.Messages;
+import me.xxastaspastaxx.dimensions.fileHandling.HistoryWorlds;
+import me.xxastaspastaxx.dimensions.fileHandling.LocationsFile;
 import me.xxastaspastaxx.dimensions.fileHandling.PortalLocations;
 import me.xxastaspastaxx.dimensions.portal.listeners.PortalListeners;
 
@@ -46,9 +45,11 @@ public class PortalClass {
 	int teleportDelay;
 	int searchRadius;
 	int spotSearchRadius;
+	boolean consumeItems;
+	boolean netherPortalEffect;
 	
-	String worldGuardDenyMessage;
 
+	HistoryWorlds historyWorlds;
 	PortalLocations portalLocations;
 	PortalListeners portalListeners;
 	
@@ -68,7 +69,7 @@ public class PortalClass {
 		Dimensions.portalClass = this;
 	}
 	
-	public void setSettings(int maxRadius, World defaultWorld, boolean portalParticles, boolean teleportMobs, int portalDelay, int debugLevel, int searchRadius, int spotSearchRadius) {
+	public void setSettings(int maxRadius, World defaultWorld, boolean portalParticles, boolean teleportMobs, int portalDelay, int debugLevel, int searchRadius, int spotSearchRadius, boolean consumeItems, boolean netherPortalEffect) {
 		this.debugLevel = debugLevel;
 		this.maxRadius = maxRadius;
 		this.defaultWorld = defaultWorld;
@@ -77,22 +78,21 @@ public class PortalClass {
 		this.teleportDelay = portalDelay;
 		this.searchRadius = searchRadius;
 		this.spotSearchRadius = spotSearchRadius;
-	}
-	
-	public void setMessages(String worldGuardDenyMessage) {
-		this.worldGuardDenyMessage = worldGuardDenyMessage;
+		this.consumeItems = consumeItems;
+		this.netherPortalEffect = netherPortalEffect;
 	}
 	
 	public Main getPlugin() {
 		return pl;
 	}
 	
-	public void setPortalLocations(PortalLocations portalLocations, PortalListeners portalListeners) {
+	public void setPortalLocations(PortalLocations portalLocations, LocationsFile locationsFile, PortalListeners portalListeners) {
 	  	debug("Loading locations",2);
+	  	HashMap<CustomPortal, HashMap<World, ArrayList<Location>>> locations = portalLocations.getLocations();
 	  	int locs = 0;
-		for (CustomPortal portal : portalLocations.getLocations().keySet()) {
-        	for (World world : portalLocations.getLocations().get(portal).keySet()) {
-        		Iterator<Location> locIterator = portalLocations.getLocations().get(portal).get(world).iterator();
+		for (CustomPortal portal : locations.keySet()) {
+        	for (World world : locations.get(portal).keySet()) {
+        		Iterator<Location> locIterator = locations.get(portal).get(world).iterator();
 			    while (locIterator.hasNext()) {
 			    	Location location = locIterator.next();
 					if (portal.isPortal(location, true, true) != null) {
@@ -107,10 +107,19 @@ public class PortalClass {
 			    }
         	}
         }
-		debug("Loaded "+locs+"/"+portalLocations.getLocations().size()+" locations",1);
+		debug("Loaded "+locs+"/"+locations.size()+" locations",1);
 
-		this.portalLocations = portalLocations;
 		this.portalListeners = portalListeners;
+		this.portalLocations = portalLocations;
+	}
+	
+	public void setPlayerHistories(HistoryWorlds historyWorlds) {
+	  	debug("Loading histories",2);
+	  	HashMap<CustomPortal, HashMap<UUID, ArrayList<World>>> histories = historyWorlds.getHistories();
+		for (CustomPortal portal : histories.keySet()) {
+        	portal.setHistories(histories.get(portal));
+        }
+		this.historyWorlds = historyWorlds;
 	}
 
 	PacketListener packetListener;
@@ -145,6 +154,7 @@ public class PortalClass {
 					int z = event.getPacket().getIntegers().read(1);
 					for (PortalFrame frame : getFrames()) {
 						frame.summon(event.getPlayer(),x,z);
+						
 					}
 				}
 				
@@ -188,7 +198,7 @@ public class PortalClass {
 		
 		debug("Attempting to light a portal at "+loc,2);
 		if ((entity instanceof Player) && pl.getWorldGuardFlags()!=null && !pl.getWorldGuardFlags().testState((Player) entity, loc,WorldGuardFlags.IgniteCustomPortal)) {
-			entity.sendMessage(worldGuardDenyMessage);
+			entity.sendMessage(Messages.get("worldGuardDenyMessage"));
 			debug("Player does not have permission to light a portal at current location",2);
 			return false;
 		}
@@ -322,74 +332,6 @@ public class PortalClass {
 		
 		return closestLocation;
 	}
-	
-	//Exit system because entering a portal must return you to your previous 
-	public World getReturnWorld(LivingEntity p, CustomPortal portal, World from, boolean update) {
-		if (!(p instanceof Player)) return getDefaultWorld();
-		
-		File lastPortalFile = new File("plugins/Dimensions/PlayerData/"+p.getName()+"/LastPortal.yml");
-		YamlConfiguration lastPortalConfig = YamlConfiguration.loadConfiguration(lastPortalFile);
-		
-		List<String> lastUsedPortal = lastPortalConfig.getStringList("LastUsedPortal");
-		List<String> lastUsedWorld = lastPortalConfig.getStringList("LastUsedWorld");
-          
-		while (lastUsedWorld.size()<lastUsedPortal.size()) lastUsedWorld.remove(lastUsedWorld.size()-1);
-		while (lastUsedPortal.size()<lastUsedWorld.size()) lastUsedPortal.remove(lastUsedPortal.size()-1);
-		
-		World pWorld = from==null?p.getWorld():from;
-		
-		for (int i=lastUsedPortal.size()-1;i>=0;i--) {
-			if (lastUsedPortal.get(i).contentEquals(portal.getName())) {
-				World world = Bukkit.getWorld(lastUsedWorld.get(i));
-				if (!pWorld.equals(world)) {
-					if (update) {
-						lastUsedPortal.remove(i);
-						lastUsedWorld.remove(i);
-						
-						lastPortalConfig.set("LastUsedPortal", lastUsedPortal);
-						lastPortalConfig.set("LastUsedWorld", lastUsedWorld);
-						
-						try {
-							lastPortalConfig.save(lastPortalFile);
-						} catch (IOException e) {
-							e.printStackTrace();
-						}
-					}
-					
-				} else {
-					world = portal.getWorld();
-				}
-				return world;
-			}
-		}
-		
-		return getDefaultWorld();
-	}
-
-	public void addToUsedPortals(LivingEntity p, CustomPortal portal) {
-		if (!(p instanceof Player)) return;
-		
-		File lastPortalFile = new File("plugins/Dimensions/PlayerData/"+p.getName()+"/LastPortal.yml");
-		YamlConfiguration lastPortalConfig = YamlConfiguration.loadConfiguration(lastPortalFile);
-
-		List<String> lastUsedPortal = lastPortalConfig.getStringList("LastUsedPortal");
-		List<String> lastUsedWorld = lastPortalConfig.getStringList("LastUsedWorld");
-		
-
-		if (!p.getWorld().equals(portal.getWorld())) {
-			lastUsedPortal.add(portal.getName());
-			lastUsedWorld.add(p.getLocation().getWorld().getName());
-		}
-		
-		lastPortalConfig.set("LastUsedPortal", lastUsedPortal);
-		lastPortalConfig.set("LastUsedWorld", lastUsedWorld);
-		
-		try {
-			lastPortalConfig.save(lastPortalFile);
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-	}
 
 	public boolean isOnHold(LivingEntity p) {
 		return hold.contains(p);
@@ -415,28 +357,71 @@ public class PortalClass {
 	
 	public void findBestPathAndUse(Player p, World from, World to) {
 		
-		if (from.equals(to)) return;
+		if (from.equals(to) || isOnHold(p)) return;
 
-		File lastPortalFile = new File("plugins/Dimensions/PlayerData/"+p.getName()+"/LastPortal.yml");
-		YamlConfiguration lastPortalConfig = YamlConfiguration.loadConfiguration(lastPortalFile);
-
-		List<String> lastUsedWorld = lastPortalConfig.getStringList("LastUsedWorld");
+		CustomPortal head = null;
+		for (CustomPortal portal : portals) {
+			if (portal.getWorld().equals(from)) head = portal;
+		}
 		
-		if (lastUsedWorld.contains(to.getName())) {
-			List<String> lastUsedPortal = lastPortalConfig.getStringList("LastUsedPortal");
-			for (int i=lastUsedWorld.size()-1;i>=0;i--) {
-				if (lastUsedWorld.get(i).contentEquals(to.getName())) {
-					getReturnWorld(p, getPortalFromName(lastUsedPortal.get(i)), from, true);
+		boolean found = false;
+		while (!found && head!=null) {
+			boolean noPortal = true;
+			for (CustomPortal portal : portals) {
+				if (head.isReturnWorld(p, to)) {
+					head.getReturnWorld(p, head.getWorld(), true);
+					found = true;
 					return;
 				}
+				if (head.isReturnWorld(p, portal.getWorld())) {
+					head.getReturnWorld(p, head.getWorld(), true);
+					head = portal;
+					noPortal = false;
+					break;
+				}
 			}
-		} else {
+			if (noPortal) found = true;
+		}
+		
+
+		if (head == null) {
 			for (CustomPortal portal : portals) {
 				if (portal.getWorld().equals(to)) {
-					portal.usePortal(p, true, false);
-					return;
+					if (!portal.getDisabledWorlds().contains(from)) {
+						portal.addToUsedPortals(p, from);
+						return;
+					} else {
+						head = portal;
+					}
 				}
 			}
+		}
+
+		ArrayList<CustomPortal> historyPortals = new ArrayList<CustomPortal>();
+		historyPortals.add(head);
+		
+		found = false;
+		while (!found) {
+			boolean noPortal = true;
+			for (CustomPortal portal : portals) {
+				if (portal.equals(head)) continue;
+				
+				if (!head.getDisabledWorlds().contains(portal.getWorld())) {
+					historyPortals.add(0,portal);
+					head = portal;
+					noPortal = false;
+					if (!head.getDisabledWorlds().contains(from)) found = true;
+					break;
+				}
+			}
+			
+			if (noPortal) return;
+		}
+		
+		
+		for (int i = 0;i<historyPortals.size();i++) {
+			CustomPortal portal = historyPortals.get(i);
+			portal.addToUsedPortals(p, (i==0)?from:historyPortals.get(i-1).getWorld());
 		}
 	}
 	
@@ -463,6 +448,14 @@ public class PortalClass {
 		return spotSearchRadius;
 	}
 	
+	public boolean consumeItems() {
+		return consumeItems;
+	}
+	
+	public boolean enableNetherPortalEffect() {
+		return netherPortalEffect;
+	}
+	
 	public ArrayList<PortalFrame> getNearbyPortalFrames(Location loc, int radius) {
 		ArrayList<PortalFrame> result = new ArrayList<PortalFrame>();
 		
@@ -486,5 +479,16 @@ public class PortalClass {
 			if (portal.getName().contentEquals(name)) return portal;
 		}
 		return null;
+	}
+
+	public void clearHistory() {
+		for (CustomPortal portal : portals) {
+			portal.setHistories(new HashMap<UUID, ArrayList<World>>());
+		}
+		save();
+	}
+	
+	public void save() {
+		Main.getInstance().files.portalFiles.save();
 	}
 }

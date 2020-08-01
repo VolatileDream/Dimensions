@@ -63,6 +63,7 @@ public class PortalFrame implements Listener {
 
 	boolean destroyed = false;
 	boolean enabled = false;
+	boolean isEntity = false;
 	
 	int task2;
 	
@@ -80,18 +81,22 @@ public class PortalFrame implements Listener {
 		
 		startLife = System.currentTimeMillis();
 		
-		try {
-			blockClass = MinecraftReflection.getBlockClass();
-			craftBlockDataClass = MinecraftReflection.getCraftBukkitClass("block.data.CraftBlockData");
-			getCombinedIdMethod = blockClass.getMethod("getCombinedId",MinecraftReflection.getIBlockDataClass());
-			getStateMethod = craftBlockDataClass.getMethod("getState");
+		if (portal.getFrame().isSolid() || portal.getFrame()==Material.NETHER_PORTAL) {
+			try {
+				blockClass = MinecraftReflection.getBlockClass();
+				craftBlockDataClass = MinecraftReflection.getCraftBukkitClass("block.data.CraftBlockData");
+				getCombinedIdMethod = blockClass.getMethod("getCombinedId",MinecraftReflection.getIBlockDataClass());
+				getStateMethod = craftBlockDataClass.getMethod("getState");
+				
+			} catch (NoSuchMethodException | IllegalArgumentException e) {
+				e.printStackTrace();
+				return;
+			}
 			
-		} catch (NoSuchMethodException | IllegalArgumentException e) {
-			e.printStackTrace();
-			return;
+			fallingBlockId =  (int) (Math.random() * Integer.MAX_VALUE);
+			
+			isEntity = true;
 		}
-		
-		fallingBlockId =  (int) (Math.random() * Integer.MAX_VALUE);
 		
 		reload();
 		
@@ -104,7 +109,8 @@ public class PortalFrame implements Listener {
 	
 	public void reload() {
 		
-
+		if (!isEntity) return;
+		
 		int combinedId = 0;
 		try {
 			Object nmsBlockData = getStateMethod.invoke(portal.getFrameBlockData(zAxis));
@@ -179,6 +185,8 @@ public class PortalFrame implements Listener {
 		task = Bukkit.getScheduler().scheduleSyncRepeatingTask(pc.pl, new Runnable() {
 			public void run() {
 				
+				if (isEntity) loc.getBlock().setType(Material.AIR);
+				
 				for (Entity en : loc.getWorld().getNearbyEntities(loc, 1,1,1)) {
 					if (!(en instanceof LivingEntity)) continue;
 					if (!pc.enableMobsTeleportation() && !(en instanceof Player)) continue;
@@ -202,7 +210,7 @@ public class PortalFrame implements Listener {
 					} else if (((System.currentTimeMillis()-timer.get(en))/1000)>=pc.getTeleportDelay()) {
 						timerIterator.remove();
 						hold.remove(en);
-						portal.usePortal(en, false, false);
+						portal.usePortal(en, false, en.getWorld(), false);
 					}
 			    }
 			    
@@ -221,9 +229,11 @@ public class PortalFrame implements Listener {
 					portal.spawnParticles(loc);
 				}
 				
-				for (Player p : shown) {
-					metaPacket.sendPacket(p);
-					teleportPacket.sendPacket(p);
+				if (isEntity) {
+					for (Player p : shown) {
+						metaPacket.sendPacket(p);
+						teleportPacket.sendPacket(p);
+					}
 				}
 				
 			}
@@ -248,24 +258,28 @@ public class PortalFrame implements Listener {
 	
 	public void summon(Player p) {
 		
-		if (p!=null && (shown.contains(p) || !p.getWorld().equals(loc.getWorld()))) return;
-		if (portal.getFrame().isSolid() || portal.getFrame()==Material.NETHER_PORTAL) {
-			
+		if (isEntity) {
+			if (p!=null && (shown.contains(p) || !p.getWorld().equals(loc.getWorld()))) return;
 			if (p==null) {
 				for (Entity player : loc.getWorld().getNearbyEntities(loc, 16*viewDistance, 255, 16*viewDistance, (player) -> player instanceof Player)) {
 					summon((Player) player);
 				}
-			} else {
+				return;
+			}
+			
+			if (isEntity) {
 				spawnPacket.sendPacket(p);
 				teleportPacket.sendPacket(p);
 				metaPacket.sendPacket(p);
-				shown.add(p);
 			}
-			loc.getBlock().setType(Material.AIR);
 		}
+		shown.add(p);
 		
 		if (!shown.isEmpty() && (!destroyed && !enabled)) {
 			startTask();
+			if (!isEntity) {
+				loc.getBlock().setBlockData(portal.getFrameBlockData(zAxis));
+			}
 		}
 	}
 	
@@ -281,21 +295,29 @@ public class PortalFrame implements Listener {
 	}
 	
 	public void remove(Player p) {
-		if (p!=null && !shown.contains(p)) return;
-		if (p==null) {
-			for (Player player : shown) {
-				destroyPacket.sendPacket(player);
+		
+		if (isEntity) {
+			if (p!=null && !shown.contains(p)) return;
+			if (p==null) {
+				@SuppressWarnings("unchecked")
+				Iterator<Player> shownIter = ((ArrayList<Player>) shown.clone()).iterator();
+				while (shownIter.hasNext()) {
+					Player player = shownIter.next();
+					shownIter.remove();
+					remove(player);
+				}
+				return;
 			}
-			shown.clear();
-		} else {
+			
 			destroyPacket.sendPacket(p);
-			shown.remove(p);
 		}
+		shown.remove(p);
 		
 		if (shown.isEmpty() && !destroyed && enabled) {
 			Bukkit.getScheduler().cancelTask(task);
 			Bukkit.getScheduler().cancelTask(task2);
 			enabled = false;
+			loc.getBlock().setBlockData(Material.AIR.createBlockData());
 		}
 	}
 	
