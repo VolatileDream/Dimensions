@@ -95,16 +95,20 @@ public class PortalClass {
         		Iterator<Location> locIterator = locations.get(portal).get(world).iterator();
 			    while (locIterator.hasNext()) {
 			    	Location location = locIterator.next();
-					if (portal.isPortal(location, true, true) != null) {
-						try {
-							portal.setFrameBlock(location, portal.isZAxis(location), true);
-			        		locs++;
-						} catch (NullPointerException e) { }
-					} else {
+			    	try {
+						if (portal.isPortal(location, true, true) != null) {
+								portal.setFrameBlock(location, portal.isZAxis(location), true);
+				        		locs++;
+						} else {
+							locIterator.remove();
+							portalLocations.removeLocation(portal, location);
+						}
+					} catch (NullPointerException e) {
 						locIterator.remove();
 						portalLocations.removeLocation(portal, location);
+						
 					}
-			    }
+				}
         	}
         }
 		debug("Loaded "+locs+"/"+locations.size()+" locations",1);
@@ -116,8 +120,16 @@ public class PortalClass {
 	public void setPlayerHistories(HistoryWorlds historyWorlds) {
 	  	debug("Loading histories",2);
 	  	HashMap<CustomPortal, HashMap<UUID, ArrayList<World>>> histories = historyWorlds.getHistories();
-		for (CustomPortal portal : histories.keySet()) {
-        	portal.setHistories(histories.get(portal));
+	  	Iterator<CustomPortal> portalIter = histories.keySet().iterator();
+		while (portalIter.hasNext()) {
+			CustomPortal portal = portalIter.next();
+	    	try {
+	        	portal.setHistories(histories.get(portal));
+	    	} catch (NullPointerException e) {
+	    		portalIter.remove();
+				historyWorlds.removePortal(portal);
+				
+			}
         }
 		this.historyWorlds = historyWorlds;
 	}
@@ -392,11 +404,14 @@ public class PortalClass {
 						return;
 					} else {
 						head = portal;
+						break;
 					}
 				}
 			}
 		}
 
+		if (head == null) return;
+		
 		ArrayList<CustomPortal> historyPortals = new ArrayList<CustomPortal>();
 		historyPortals.add(head);
 		
@@ -405,7 +420,6 @@ public class PortalClass {
 			boolean noPortal = true;
 			for (CustomPortal portal : portals) {
 				if (portal.equals(head)) continue;
-				
 				if (!head.getDisabledWorlds().contains(portal.getWorld())) {
 					historyPortals.add(0,portal);
 					head = portal;
@@ -413,6 +427,7 @@ public class PortalClass {
 					if (!head.getDisabledWorlds().contains(from)) found = true;
 					break;
 				}
+
 			}
 			
 			if (noPortal) return;

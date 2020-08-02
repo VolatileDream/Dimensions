@@ -7,6 +7,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map.Entry;
 
+import org.bukkit.Axis;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
@@ -14,6 +15,8 @@ import org.bukkit.Material;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
 import org.bukkit.block.BlockFace;
+import org.bukkit.block.data.BlockData;
+import org.bukkit.block.data.Orientable;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.LivingEntity;
@@ -49,6 +52,8 @@ public class PortalFrame implements Listener {
 	WrapperPlayServerEntityMetadata metaPacket;
 	WrappedDataWatcher dataWatcher;
 	WrapperPlayServerEntityDestroy destroyPacket;
+	
+	BlockData netherBlockData;
 	
 	/***************************************************************************************************************************/
 	
@@ -97,6 +102,10 @@ public class PortalFrame implements Listener {
 			
 			isEntity = true;
 		}
+		
+		Orientable orientable = (Orientable) Material.NETHER_PORTAL.createBlockData();
+		orientable.setAxis(zAxis ? Axis.Z : Axis.X);
+		netherBlockData = orientable;
 		
 		reload();
 		
@@ -190,6 +199,7 @@ public class PortalFrame implements Listener {
 				for (Entity en : loc.getWorld().getNearbyEntities(loc, 1,1,1)) {
 					if (!(en instanceof LivingEntity)) continue;
 					if (!pc.enableMobsTeleportation() && !(en instanceof Player)) continue;
+					if (en instanceof Player && pc.enableNetherPortalEffect()) ((Player) en).sendBlockChange(loc, netherBlockData);
 					if (timer.containsKey(en) || pc.isOnHold((LivingEntity) en)) continue;
 					if (en.getLocation().getBlock().equals(loc.getBlock())) {
 						int extra = 0;
@@ -312,6 +322,7 @@ public class PortalFrame implements Listener {
 			destroyPacket.sendPacket(p);
 		}
 		shown.remove(p);
+		p.sendBlockChange(loc, Material.AIR.createBlockData());
 		
 		if (shown.isEmpty() && !destroyed && enabled) {
 			Bukkit.getScheduler().cancelTask(task);
@@ -354,7 +365,7 @@ public class PortalFrame implements Listener {
 			Location fixedLocation = loc.clone().add(0.5,0.5,0.5);
 			loc.getWorld().spawnParticle(Particle.BLOCK_CRACK, fixedLocation, 10, portal.getFrameBlockData(zAxis));
 			loc.getWorld().playSound(fixedLocation, Sound.BLOCK_GLASS_BREAK, 1.0F, 8.0F);
-			loc.getBlock().setType(Material.AIR);
+			loc.getBlock().setBlockData(Material.AIR.createBlockData());
 		}
 		remove(null);
 		shown.clear();

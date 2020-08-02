@@ -3,14 +3,12 @@ package me.xxastaspastaxx.dimensions.portal.listeners;
 import java.util.HashMap;
 import java.util.List;
 
-import org.bukkit.Axis;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
-import org.bukkit.block.data.Orientable;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
@@ -41,7 +39,6 @@ import org.bukkit.event.player.PlayerAnimationType;
 import org.bukkit.event.player.PlayerBucketEmptyEvent;
 import org.bukkit.event.player.PlayerChangedWorldEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
-import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.world.PortalCreateEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.Damageable;
@@ -52,7 +49,6 @@ import me.xxastaspastaxx.dimensions.Dimensions;
 import me.xxastaspastaxx.dimensions.events.DestroyCause;
 import me.xxastaspastaxx.dimensions.portal.CustomPortal;
 import me.xxastaspastaxx.dimensions.portal.PortalClass;
-import me.xxastaspastaxx.dimensions.portal.PortalFrame;
 
 public class PortalListeners implements Listener {
 	
@@ -287,30 +283,5 @@ public class PortalListeners implements Listener {
 		
 		if (!portalClass.isOnHold(e.getPlayer()))
 			portalClass.findBestPathAndUse(e.getPlayer(),e.getFrom(),e.getPlayer().getWorld());
-	}
-	
-	/*@EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
-	public void onNetherPortalUse(PlayerTeleportEvent e) {
-		if (e.getCause().equals(TeleportCause.NETHER_PORTAL)) {
-			
-		}
-	}*/
-	
-	@EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
-	public void onPlayerMove(PlayerMoveEvent e) {
-		if (!portalClass.enableNetherPortalEffect()) return;
-		Location fromEye = e.getFrom().clone().add(0,1,0);
-		Location toEye = e.getTo().clone().add(0,1,0);
-		if (!fromEye.getBlock().equals(toEye.getBlock())) {
-			PortalFrame frame = portalClass.getFrameAtLocation(toEye);
-			if (frame!=null) {
-				Orientable orientable = (Orientable) Material.NETHER_PORTAL.createBlockData();
-				orientable.setAxis(frame.isZAxis() ? Axis.Z : Axis.X);
-				e.getPlayer().sendBlockChange(toEye, orientable);
-			}
-			if (portalClass.isPortalAtLocation(fromEye)) {
-				e.getPlayer().sendBlockChange(fromEye, fromEye.getBlock().getBlockData());
-			}
-		}
 	}
 }

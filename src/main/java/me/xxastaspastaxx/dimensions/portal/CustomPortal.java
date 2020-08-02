@@ -896,13 +896,7 @@ public class CustomPortal {
 				getReturnWorld(p, fromWorld, true);
 				addToUsedPortals(p, p.getWorld());
 				
-				if (p.teleport(teleportLocation)) {
-					if (p instanceof Player && frame!=null) {
-						Orientable orientable = (Orientable) Material.NETHER_PORTAL.createBlockData();
-						orientable.setAxis(frame.isZAxis() ? Axis.Z : Axis.X);
-						((Player) p).sendBlockChange(p.getLocation().clone().add(0,1,0), orientable);
-					}
-				}
+				p.teleport(teleportLocation);
 			}
 		}
 	}
