@@ -154,7 +154,7 @@ public class DimensionsCommands implements CommandExecutor {
 							frame.destroy(true, false);
 						}
 					}
-					p.sendMessage(prefix+"งaRemoved งc"+args[1]+"งa portals");
+					p.sendMessage(prefix+"ยงaRemoved ยงc"+args[1]+"ยงa portals");
 					return true;
 				}
 			}
@@ -164,9 +164,9 @@ public class DimensionsCommands implements CommandExecutor {
 					try {
 						Main.getInstance().files.reload();
 						reloadDimensionsAddons();
-						p.sendMessage(prefix+"งaSuccesfully reloaded files.");
+						p.sendMessage(prefix+"ยงaSuccesfully reloaded files.");
 					} catch (Exception e) {
-						p.sendMessage(prefix+"งcCould not reload files. Check console for errors.");
+						p.sendMessage(prefix+"ยงcCould not reload files. Check console for errors.");
 						e.printStackTrace();
 					}
 					return true;
@@ -176,7 +176,7 @@ public class DimensionsCommands implements CommandExecutor {
 			if (args[0].equalsIgnoreCase("history") && args.length==2 && args[1].equalsIgnoreCase("clear")) {
 				if (hasPermission(p, args[0].toLowerCase())) {
 					pc.clearHistory();
-					p.sendMessage(prefix+"งaCleared portal history.");
+					p.sendMessage(prefix+"ยงaCleared portal history.");
 					return true;
 				}
 			}
@@ -184,9 +184,9 @@ public class DimensionsCommands implements CommandExecutor {
 		
 		String suggestion = getSuggestionInHelp(p, args[0]);
 		if (suggestion!=null) {
-			p.sendMessage(prefix+"ง7Did you mean งc/"+ pluginCommand +" "+suggestion+"ง7?");
+			p.sendMessage(prefix+"ยง7Did you mean ยงc/"+ pluginCommand +" "+suggestion+"ยง7?");
 		} else {
-			p.sendMessage(prefix+"ง7Unknown command");
+			p.sendMessage(prefix+"ยง7Unknown command");
 		}
 		return true;
 	}
@@ -251,9 +251,9 @@ public class DimensionsCommands implements CommandExecutor {
     }
     
     public String getHelp(int page, boolean admin) {
-    	if (page>getPageCount(admin)) return "ง7Page งc"+page+"ง7 was found.";
+    	if (page>getPageCount(admin)) return "ยง7Page ยงc"+page+"ยง7 was found.";
     	
-    	String result = "ง7งm---ง7[งc"+page+"/"+getPageCount(admin)+"ง7]งm---ง7[งc"+pluginName+"ง7]งm---ง7[งc"+page+"/"+getPageCount(admin)+"ง7]งm---งr\n";
+    	String result = "ยง7ยงm---ยง7[ยงc"+page+"/"+getPageCount(admin)+"ยง7]ยงm---ยง7[ยงc"+pluginName+"ยง7]ยงm---ยง7[ยงc"+page+"/"+getPageCount(admin)+"ยง7]ยงm---ยงr\n";
     	result += "\n";
     	
     	int offset = 0;
@@ -265,7 +265,7 @@ public class DimensionsCommands implements CommandExecutor {
     		//String perm = getPermission(cmd);
     		boolean isAdmin = isAdminCommand(cmd);
     		if ((admin && isAdmin) || (!admin && !isAdmin)) {
-    			result+= "ง7/"+ pluginCommand +" "+cmd+" "+args+" งc-ง7 "+desc+"\n";
+    			result+= "ยง7/"+ pluginCommand +" "+cmd+" "+args+" ยงc-ยง7 "+desc+"\n";
     		} else {
     			offset+=1;
     			i-=1;
@@ -273,13 +273,13 @@ public class DimensionsCommands implements CommandExecutor {
     	}
     	
     	result += "\n";
-    	result += "ง7งm---ง7[งc"+page+"/"+getPageCount(admin)+"ง7]งm---ง7[งc"+pluginName+"ง7]งm---ง7[งc"+page+"/"+getPageCount(admin)+"ง7]งm---\n";
+    	result += "ยง7ยงm---ยง7[ยงc"+page+"/"+getPageCount(admin)+"ยง7]ยงm---ยง7[ยงc"+pluginName+"ยง7]ยงm---ยง7[ยงc"+page+"/"+getPageCount(admin)+"ยง7]ยงm---\n";
     	return result;
     }
     
     public String getHelp(String cmd, boolean admin) {
     	
-    	String result = "ง7งm---ง7[งc"+cmd+"ง7]งm---ง7[งc"+pluginName+"ง7]งm---ง7[งc"+cmd+"ง7]งm---\n";
+    	String result = "ยง7ยงm---ยง7[ยงc"+cmd+"ยง7]ยงm---ยง7[ยงc"+pluginName+"ยง7]ยงm---ยง7[ยงc"+cmd+"ยง7]ยงm---\n";
     	result += "\n";
     	
     	for (String command : commands.keySet()) {
@@ -289,13 +289,13 @@ public class DimensionsCommands implements CommandExecutor {
         		//String perm = getPermission(command);
         		boolean isAdmin = isAdminCommand(command);
         		if ((admin && isAdmin) || (!admin && !isAdmin)) {
-        			result+= "ง7/"+ pluginCommand +" "+command+" "+args+" งc-ง7 "+desc+"\n";
+        			result+= "ยง7/"+ pluginCommand +" "+command+" "+args+" ยงc-ยง7 "+desc+"\n";
         		}
     		}
     	}
     	
     	result += "\n";
-    	result += "ง7งm---ง7[งc"+cmd+"ง7]งm---ง7[งc"+pluginName+"ง7]งm---ง7[งc"+cmd+"ง7]งm---\n";
+    	result += "ยง7ยงm---ยง7[ยงc"+cmd+"ยง7]ยงm---ยง7[ยงc"+pluginName+"ยง7]ยงm---ยง7[ยงc"+cmd+"ยง7]ยงm---\n";
     	
     	
     	
@@ -303,9 +303,9 @@ public class DimensionsCommands implements CommandExecutor {
     }
     
     public String getPermissions(int page, boolean admin) {
-    	if (page>getPageCount(admin)) return "ง7Page งc"+page+"ง7 was found.";
+    	if (page>getPageCount(admin)) return "ยง7Page ยงc"+page+"ยง7 was found.";
     	
-    	String result = "ง7งm---ง7[งc"+page+"/"+getPageCount(admin)+"ง7]งm---ง7[งc"+pluginName+"ง7]งm---ง7[งc"+page+"/"+getPageCount(admin)+"ง7]งm---งr\n";
+    	String result = "ยง7ยงm---ยง7[ยงc"+page+"/"+getPageCount(admin)+"ยง7]ยงm---ยง7[ยงc"+pluginName+"ยง7]ยงm---ยง7[ยงc"+page+"/"+getPageCount(admin)+"ยง7]ยงm---ยงr\n";
     	result += "\n";
     	
     	int offset = 0;
@@ -317,7 +317,7 @@ public class DimensionsCommands implements CommandExecutor {
     		String perm = getPermission(cmd);
     		boolean isAdmin = isAdminCommand(cmd);
     		if ((admin && isAdmin) || (!admin && !isAdmin)) {
-    			result+= "ง7/"+ pluginCommand +" "+cmd+" "+args+" งc-ง7 "+perm+"\n";
+    			result+= "ยง7/"+ pluginCommand +" "+cmd+" "+args+" ยงc-ยง7 "+perm+"\n";
     		} else {
     			offset+=1;
     			i-=1;
@@ -325,13 +325,13 @@ public class DimensionsCommands implements CommandExecutor {
     	}
     	
     	result += "\n";
-    	result += "ง7งm---ง7[งc"+page+"/"+getPageCount(admin)+"ง7]งm---ง7[งc"+pluginName+"ง7]งm---ง7[งc"+page+"/"+getPageCount(admin)+"ง7]งm---\n";
+    	result += "ยง7ยงm---ยง7[ยงc"+page+"/"+getPageCount(admin)+"ยง7]ยงm---ยง7[ยงc"+pluginName+"ยง7]ยงm---ยง7[ยงc"+page+"/"+getPageCount(admin)+"ยง7]ยงm---\n";
     	return result;
     }
     
     public String getPermissions(String cmd, boolean admin) {
     	
-    	String result = "ง7งm---ง7[งc"+cmd+"ง7]งm---ง7[งc"+pluginName+"ง7]งm---ง7[งc"+cmd+"ง7]งm---\n";
+    	String result = "ยง7ยงm---ยง7[ยงc"+cmd+"ยง7]ยงm---ยง7[ยงc"+pluginName+"ยง7]ยงm---ยง7[ยงc"+cmd+"ยง7]ยงm---\n";
     	result += "\n";
     	
     	for (String command : commands.keySet()) {
@@ -341,13 +341,13 @@ public class DimensionsCommands implements CommandExecutor {
         		String perm = getPermission(command);
         		boolean isAdmin = isAdminCommand(command);
         		if ((admin && isAdmin) || (!admin && !isAdmin)) {
-        			result+= "ง7/"+ pluginCommand +" "+command+" "+args+" งc-ง7 "+perm+"\n";
+        			result+= "ยง7/"+ pluginCommand +" "+command+" "+args+" ยงc-ยง7 "+perm+"\n";
         		}
     		}
     	}
     	
     	result += "\n";
-    	result += "ง7งm---ง7[งc"+cmd+"ง7]งm---ง7[งc"+pluginName+"ง7]งm---ง7[งc"+cmd+"ง7]งm---\n";
+    	result += "ยง7ยงm---ยง7[ยงc"+cmd+"ยง7]ยงm---ยง7[ยงc"+pluginName+"ยง7]ยงm---ยง7[ยงc"+cmd+"ยง7]ยงm---\n";
     	
     	
     	
@@ -376,4 +376,6 @@ public class DimensionsCommands implements CommandExecutor {
 	    }
 	    return true;
 	  }
+	  
+	  //ฮฮฉฮ‘ฮฮฮ‘ ฮฃฮ• ฮ‘ฮ“ฮ‘ฮ ฮฮฉ!
 }

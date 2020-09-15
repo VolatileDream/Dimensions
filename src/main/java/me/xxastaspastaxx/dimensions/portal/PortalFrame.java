@@ -3,6 +3,7 @@ package me.xxastaspastaxx.dimensions.portal;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
+import java.util.ConcurrentModificationException;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map.Entry;
@@ -73,6 +74,8 @@ public class PortalFrame implements Listener {
 	int task2;
 	
 	long startLife;
+	
+	HashMap<Object, Object> tags = new HashMap<Object, Object>();
 	
 	public PortalFrame(PortalClass pc, CustomPortal customPortal, Location location, boolean zAxis) {
 		this.portal = customPortal;
@@ -194,7 +197,17 @@ public class PortalFrame implements Listener {
 		task = Bukkit.getScheduler().scheduleSyncRepeatingTask(pc.pl, new Runnable() {
 			public void run() {
 				
-				if (isEntity) loc.getBlock().setType(Material.AIR);
+				if (isEntity) {
+					loc.getBlock().setType(Material.AIR);
+					for (Player p : shown) {
+						p.sendBlockChange(loc, Material.AIR.createBlockData());
+					}
+				} else {
+					loc.getBlock().setBlockData(portal.getFrameBlockData(zAxis));
+					for (Player p : shown) {
+						p.sendBlockChange(loc,portal.getFrameBlockData(zAxis));
+					}
+				}
 				
 				for (Entity en : loc.getWorld().getNearbyEntities(loc, 1,1,1)) {
 					if (!(en instanceof LivingEntity)) continue;
@@ -218,9 +231,14 @@ public class PortalFrame implements Listener {
 			    	if ((eloc.getBlockX()!=loc.getBlockX() || eloc.getBlockY()!=loc.getBlockY() || eloc.getBlockZ()!=loc.getBlockZ()) && (!pc.isPortalAtLocation(en.getLocation()) ||(pc.isPortalAtLocation(en.getLocation()) && !pc.getPortalAtLocation(en.getLocation()).equals(portal)))) {
 			    		timerIterator.remove();
 					} else if (((System.currentTimeMillis()-timer.get(en))/1000)>=pc.getTeleportDelay()) {
-						timerIterator.remove();
-						hold.remove(en);
-						portal.usePortal(en, false, en.getWorld(), false);
+						if (portal.usePortal(en, false, en.getWorld(), false)) {
+							try {
+								timerIterator.remove();
+								hold.remove(en);
+							} catch (ConcurrentModificationException e) {
+								
+							}
+						}
 					}
 			    }
 			    
@@ -267,21 +285,18 @@ public class PortalFrame implements Listener {
 	}
 	
 	public void summon(Player p) {
-		
+
+		if (p!=null && (shown.contains(p) || !p.getWorld().equals(loc.getWorld()))) return;
+		if (p==null) {
+			for (Entity player : loc.getWorld().getNearbyEntities(loc, 16*viewDistance, 255, 16*viewDistance, (player) -> player instanceof Player)) {
+				summon((Player) player);
+			}
+			return;
+		}
 		if (isEntity) {
-			if (p!=null && (shown.contains(p) || !p.getWorld().equals(loc.getWorld()))) return;
-			if (p==null) {
-				for (Entity player : loc.getWorld().getNearbyEntities(loc, 16*viewDistance, 255, 16*viewDistance, (player) -> player instanceof Player)) {
-					summon((Player) player);
-				}
-				return;
-			}
-			
-			if (isEntity) {
-				spawnPacket.sendPacket(p);
-				teleportPacket.sendPacket(p);
-				metaPacket.sendPacket(p);
-			}
+			spawnPacket.sendPacket(p);
+			teleportPacket.sendPacket(p);
+			metaPacket.sendPacket(p);
 		}
 		shown.add(p);
 		
@@ -305,24 +320,20 @@ public class PortalFrame implements Listener {
 	}
 	
 	public void remove(Player p) {
-		
-		if (isEntity) {
-			if (p!=null && !shown.contains(p)) return;
-			if (p==null) {
-				@SuppressWarnings("unchecked")
-				Iterator<Player> shownIter = ((ArrayList<Player>) shown.clone()).iterator();
-				while (shownIter.hasNext()) {
-					Player player = shownIter.next();
-					shownIter.remove();
-					remove(player);
-				}
-				return;
+		if (p==null) {
+			Iterator<Player> shownIter = shown.iterator();
+			while (shownIter.hasNext()) {
+				Player player = shownIter.next();
+				shownIter.remove();
+				remove(player);
 			}
-			
+			return;
+		}
+		if (isEntity) {
 			destroyPacket.sendPacket(p);
 		}
-		shown.remove(p);
 		p.sendBlockChange(loc, Material.AIR.createBlockData());
+		shown.remove(p);
 		
 		if (shown.isEmpty() && !destroyed && enabled) {
 			Bukkit.getScheduler().cancelTask(task);
@@ -377,7 +388,8 @@ public class PortalFrame implements Listener {
 			
 			for (BlockFace face : new BlockFace[]{BlockFace.WEST, BlockFace.EAST, BlockFace.NORTH, BlockFace.SOUTH, BlockFace.DOWN, BlockFace.UP})
 	        {
-	        	if (pc.isPortalAtLocation(loc.getBlock().getRelative(face).getLocation()) && pc.getPortalAtLocation(loc.getBlock().getRelative(face).getLocation()).equals(portal)) {
+				CustomPortal found = pc.getPortalAtLocation(loc.getBlock().getRelative(face).getLocation());
+	        	if (found!=null && found.equals(portal)) {
 	        		pc.getFrameAtLocation(loc.getBlock().getRelative(face).getLocation()).destroy(remove, deleteNear);
 	        	}
 	        }
@@ -388,5 +400,25 @@ public class PortalFrame implements Listener {
 
 	public boolean isShown(Player p) {
 		return shown.contains(p);
+	}
+	
+	public PortalFrame getBottomFrame() {
+
+		PortalFrame current = this;
+		while (!current.isOnGround()) current = pc.getFrameAtLocation(loc.clone().add(0,-1,0));
+		
+		return current;
+	}
+	
+	public boolean isOnGround() {
+		return loc.getBlock().getRelative(BlockFace.DOWN).getType()!=Material.AIR;
+	}
+	
+	public Object getTag(Object key) {
+		return tags.get(key);
+	}
+	
+	public void setTag(Object key, Object value) {
+		tags.put(key, value);
 	}
 }

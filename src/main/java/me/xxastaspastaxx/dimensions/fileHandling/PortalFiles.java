@@ -369,7 +369,7 @@ public class PortalFiles implements Listener {
 			String name = fileName.replace(".yml", "");
 			
 			boolean enabled = portalConfig.getBoolean("Enable");
-			//if (!enabled) continue;
+			if (!enabled) continue;
 			String displayName = portalConfig.getString("DisplayName");
 			
 			Material material = Material.matchMaterial(portalConfig.getString("Portal.Block.Material"));
@@ -383,6 +383,12 @@ public class PortalFiles implements Listener {
 			World world = Bukkit.getWorld(worldName);
 			if (!Bukkit.getServer().getWorlds().contains(world)) {
 				world = Bukkit.getServer().createWorld(new WorldCreator(worldName));
+			}
+			if (world.equals(portalClass.getDefaultWorld())) {
+				System.out.println("Disabling portal: "+name);
+				System.out.println("Reason: There cannot be a portal that leads to the default world");
+				enabled = false;
+				continue;
 			}
 			int worldHeight = portalConfig.getInt("World.MaxHeight");
 			String ratio = portalConfig.getString("World.Ratio");

@@ -37,6 +37,7 @@ import org.bukkit.event.inventory.FurnaceBurnEvent;
 import org.bukkit.event.player.PlayerAnimationEvent;
 import org.bukkit.event.player.PlayerAnimationType;
 import org.bukkit.event.player.PlayerBucketEmptyEvent;
+import org.bukkit.event.player.PlayerBucketFillEvent;
 import org.bukkit.event.player.PlayerChangedWorldEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.world.PortalCreateEvent;
@@ -87,7 +88,7 @@ public class PortalListeners implements Listener {
 					e.setCancelled(true);
 					if (portalClass.consumeItems() && e.getPlayer().getGameMode()!=GameMode.CREATIVE) {
 						ItemStack item = e.getItem();
-						if (item.getType().toString().contains("BUCKET") && item.getType()==Material.BUCKET) {
+						if (item.getType().toString().contains("BUCKET") && item.getType()!=Material.BUCKET) {
 							item.setType(Material.BUCKET);
 						} else if (item.getItemMeta() instanceof Damageable) {
 							Damageable dmg = (Damageable) item.getItemMeta();
@@ -110,22 +111,7 @@ public class PortalListeners implements Listener {
 	}
 	
 	@EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
-	public void onBucketEmpty(PlayerBucketEmptyEvent e) {
-		try {
-			int rad = (int) Math.ceil(e.getBlockClicked().getRelative(e.getBlockFace()).getLocation().distance(e.getPlayer().getEyeLocation()));
-			List<Block> los = e.getPlayer().getLineOfSight(null, rad);
-			for (Block block : los) {
-				if (portalClass.isPortalAtLocation(block.getLocation())) {
-					e.setCancelled(true);
-					break;
-				}
-			}
-		} catch (IllegalStateException ex) {}
-	}
-	
-	@EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
 	public void onPlayerClick(PlayerAnimationEvent e) {
-		
 		Player p = e.getPlayer();
 
 		if (clicked.containsKey(p)) {
@@ -149,6 +135,30 @@ public class PortalListeners implements Listener {
 		}
 	}
 	
+	@EventHandler(priority = EventPriority.LOW)
+	public void onBucketEmpty(PlayerBucketEmptyEvent e) {
+		e.setCancelled(bucketEvent(e.getPlayer(), e.getBlockClicked().getRelative(e.getBlockFace())));
+	}
+	
+	@EventHandler(priority = EventPriority.LOW)
+	public void onBucketFill(PlayerBucketFillEvent e) {
+		e.setCancelled(bucketEvent(e.getPlayer(), e.getBlockClicked().getRelative(e.getBlockFace())));
+	}
+	
+	
+	public boolean bucketEvent(Player p, Block eventBlock) {
+		try {
+			int rad = (int) Math.ceil(eventBlock.getLocation().distance(p.getEyeLocation()));
+			List<Block> los = p.getLineOfSight(null, rad);
+			for (Block block : los) {
+				if (portalClass.isPortalAtLocation(block.getLocation())) {
+					return true;
+				}
+			}
+		} catch (IllegalStateException ex) {}
+		return false;
+	}
+	
 	@EventHandler(ignoreCancelled = true)
 	public void onExplode(ExplosionPrimeEvent e) {
 		Entity exploder = e.getEntity();
@@ -165,11 +175,8 @@ public class PortalListeners implements Listener {
 	
 	@EventHandler(ignoreCancelled = true)
 	public void onLiquidFlow(BlockFromToEvent e) {
-		CustomPortal portal = portalClass.getPortalAtLocation(e.getBlock().getLocation());
-		if (portal!=null) {
-			if (portal.getFrame()==e.getBlock().getType()) {
-				e.setCancelled(true);
-			}
+		if (portalClass.isPortalAtLocation(e.getBlock().getLocation()) || portalClass.isPortalAtLocation(e.getToBlock().getLocation())) {
+			e.setCancelled(true);
 		}
 	}
 	
@@ -264,10 +271,9 @@ public class PortalListeners implements Listener {
         	Block relative = block.getRelative(face);
         	CustomPortal portal = portalClass.getPortalAtLocation(relative.getLocation());
         	if (portal!=null) {
-        		destroyed = !portal.destroy(relative.getLocation(),cause, (LivingEntity) ent);
+            	destroyed = !portal.destroy(relative.getLocation(),cause, (LivingEntity) ent);
         	}
         }
-        
         return destroyed;
 	}
 	
