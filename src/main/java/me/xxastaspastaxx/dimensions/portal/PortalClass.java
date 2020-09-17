@@ -328,6 +328,7 @@ public class PortalClass {
 	}
 	
 	public Location getNearestPortalLocation(CustomPortal portal, Location loc) {
+		if (loc==null) return null;
 		ArrayList<Location> portals = portalLocations.getLocations(portal,loc.getWorld());
 		if (portals==null) return null;
 		

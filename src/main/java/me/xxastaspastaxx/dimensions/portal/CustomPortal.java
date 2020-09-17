@@ -749,13 +749,13 @@ public class CustomPortal {
 		}
 		
 		if (!foundLocation) {
-			while (Dimensions.isAir(teleportLocation.getBlock().getRelative(BlockFace.DOWN).getType()) && teleportLocation.getY()>=1) {
-				teleportLocation.add(0,-1,0);
-			}
+			while (Dimensions.isAir(teleportLocation.getBlock().getRelative(BlockFace.DOWN).getType()) && teleportLocation.getY()>=1) teleportLocation.add(0,-1,0);
 			tempLoc = spiralSearch(teleportLocation, zAxis,true);
 			if (tempLoc==null) spiralSearch(teleportLocation, zAxis,false);
-			teleportLocation =  tempLoc;
-			foundLocation = true;
+			if (tempLoc!=null) {
+				teleportLocation =  tempLoc;
+				foundLocation = true;
+			}
 		}
 		
 		nearestLocation = portalClass.getNearestPortalLocation(this,teleportLocation);
@@ -767,7 +767,7 @@ public class CustomPortal {
 			if (nearestLocation.getBlock().getRelative(BlockFace.NORTH).getType()!=frame) nearestLocation.add(0,0,0.5);
 			return nearestLocation;
 		}
-		
+
 		event.setBuildLocation(teleportLocation);
 		
 		teleportLocation.add(zAxis ? 0.5f : 0,0,!zAxis ? 0.5f : 1.0f);
