@@ -60,6 +60,7 @@ public class PortalFrame implements Listener {
 	
 	CustomPortal portal;
 	Location loc;
+	Location fixedLoc;
 	int[] chunkPos = new int[2];
 	boolean zAxis;
 	
@@ -80,6 +81,7 @@ public class PortalFrame implements Listener {
 	public PortalFrame(PortalClass pc, CustomPortal customPortal, Location location, boolean zAxis) {
 		this.portal = customPortal;
 		this.loc = location;
+		this.fixedLoc = loc.clone().add(0.5,0.5,0.5);
 		this.chunkPos[0] = loc.getChunk().getX();
 		this.chunkPos[1] = loc.getChunk().getZ();
 		this.zAxis = zAxis;
@@ -209,7 +211,7 @@ public class PortalFrame implements Listener {
 					}
 				}
 				
-				for (Entity en : loc.getWorld().getNearbyEntities(loc, 1,1,1)) {
+				for (Entity en : loc.getWorld().getNearbyEntities(fixedLoc, 0.5,0.5,0.5)) {
 					if (!(en instanceof LivingEntity)) continue;
 					if (!pc.enableMobsTeleportation() && !(en instanceof Player)) continue;
 					if (en instanceof Player && pc.enableNetherPortalEffect()) ((Player) en).sendBlockChange(loc, netherBlockData);
@@ -230,14 +232,17 @@ public class PortalFrame implements Listener {
 			    	Location eloc = en.getLocation();
 			    	if ((eloc.getBlockX()!=loc.getBlockX() || eloc.getBlockY()!=loc.getBlockY() || eloc.getBlockZ()!=loc.getBlockZ()) && (!pc.isPortalAtLocation(en.getLocation()) ||(pc.isPortalAtLocation(en.getLocation()) && !pc.getPortalAtLocation(en.getLocation()).equals(portal)))) {
 			    		timerIterator.remove();
+					} else if (!timer.containsKey(en)) {
+						try {
+							timerIterator.remove();
+							hold.remove(en);
+						} catch (ConcurrentModificationException e) { }
 					} else if (((System.currentTimeMillis()-timer.get(en))/1000)>=pc.getTeleportDelay()) {
 						if (portal.usePortal(en, false, en.getWorld(), false)) {
 							try {
 								timerIterator.remove();
 								hold.remove(en);
-							} catch (ConcurrentModificationException e) {
-								
-							}
+							} catch (ConcurrentModificationException e) { }
 						}
 					}
 			    }
@@ -288,7 +293,7 @@ public class PortalFrame implements Listener {
 
 		if (p!=null && (shown.contains(p) || !p.getWorld().equals(loc.getWorld()))) return;
 		if (p==null) {
-			for (Entity player : loc.getWorld().getNearbyEntities(loc, 16*viewDistance, 255, 16*viewDistance, (player) -> player instanceof Player)) {
+			for (Entity player : loc.getWorld().getNearbyEntities(fixedLoc, 16*viewDistance, 255, 16*viewDistance, (player) -> player instanceof Player)) {
 				summon((Player) player);
 			}
 			return;
@@ -373,9 +378,8 @@ public class PortalFrame implements Listener {
 		hold.clear();
 		
 		if (remove) {
-			Location fixedLocation = loc.clone().add(0.5,0.5,0.5);
-			loc.getWorld().spawnParticle(Particle.BLOCK_CRACK, fixedLocation, 10, portal.getFrameBlockData(zAxis));
-			loc.getWorld().playSound(fixedLocation, Sound.BLOCK_GLASS_BREAK, 1.0F, 8.0F);
+			loc.getWorld().spawnParticle(Particle.BLOCK_CRACK, fixedLoc, 10, portal.getFrameBlockData(zAxis));
+			loc.getWorld().playSound(fixedLoc, Sound.BLOCK_GLASS_BREAK, 1.0F, 8.0F);
 			loc.getBlock().setBlockData(Material.AIR.createBlockData());
 		}
 		remove(null);
