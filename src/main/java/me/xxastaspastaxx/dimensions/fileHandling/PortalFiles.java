@@ -67,6 +67,7 @@ public class PortalFiles implements Listener {
 		portalSettings.addDefault("DefaultWorld", "world");
 		portalSettings.addDefault("EnableParticles", false);
 		portalSettings.addDefault("EnableMobsTeleportation", false);
+		portalSettings.addDefault("EnableNonLivingEntitiesTeleportation", false);
 		portalSettings.addDefault("TeleportDelay", 4);
 		portalSettings.addDefault("SearchRadius", 128);
 		portalSettings.addDefault("SafeSpotSearchRadius", 16);
@@ -132,6 +133,7 @@ public class PortalFiles implements Listener {
 		portalConfig.addDefault("Enable", true);
 		portalConfig.addDefault("DisplayName", "&SamplePortal");
 
+  	  	portalConfig.addDefault("Portal.Horizontal", false);
   	  	portalConfig.addDefault("Portal.Block.Material", "stone");
   	  	portalConfig.addDefault("Portal.Block.Face", "all");
   	  	portalConfig.addDefault("Portal.ParticlesColor", "75;75;75");
@@ -328,13 +330,14 @@ public class PortalFiles implements Listener {
   	  	World defaultWorld = Bukkit.getWorld(portalSettings.getString("DefaultWorld"));
   	  	boolean portalParticles = portalSettings.getBoolean("EnableParticles");
   	  	boolean enableMobs = portalSettings.getBoolean("EnableMobsTeleportation");
+  	  	boolean enableEntities = portalSettings.getBoolean("EnableNonLivingEntitiesTeleportation");
   	  	int teleportDelay = portalSettings.getInt("TeleportDelay");
   	  	int searchRadius = portalSettings.getInt("SearchRadius");
   	  	int spotSearchRadius = portalSettings.getInt("SafeSpotSearchRadius");
   	  	boolean consumeItems = portalSettings.getBoolean("ConsumeItems");
   	  	boolean netherPortalEffect = portalSettings.getBoolean("NetherPortalEffect");
 		
-  	  	portalClass.setSettings(maxRadius, defaultWorld, portalParticles, enableMobs, teleportDelay, debugLevel, searchRadius, spotSearchRadius, consumeItems, netherPortalEffect);
+  	  	portalClass.setSettings(maxRadius, defaultWorld, portalParticles, enableMobs, enableEntities, teleportDelay, debugLevel, searchRadius, spotSearchRadius, consumeItems, netherPortalEffect);
   	  	
 		return true;
 	}
@@ -371,7 +374,8 @@ public class PortalFiles implements Listener {
 			boolean enabled = portalConfig.getBoolean("Enable");
 			if (!enabled) continue;
 			String displayName = portalConfig.getString("DisplayName");
-			
+
+			boolean horizontal = portalConfig.getBoolean("Portal.Horizontal");
 			Material material = Material.matchMaterial(portalConfig.getString("Portal.Block.Material"));
 			String face = portalConfig.getString("Portal.Block.Face");
 			Material frame = Material.matchMaterial(portalConfig.getString("Portal.Frame"));
@@ -430,10 +434,10 @@ public class PortalFiles implements Listener {
 			//add the custom portal to the list so it can be used for later calculations
 			CustomPortal oldPortal = portalClass.getPortalByName(name);
 			if (oldPortal!=null) {
-				oldPortal.update(name, enabled, displayName, material, face, frame, lighter, world, worldHeight, ratio, minPortalWidth, minPortalHeight, entityTransformation, spawningDelay, entitySpawning, buildExitPortal, spawnOnAir, disabledWorlds, particlesColor);
+				oldPortal.update(name, enabled, displayName, horizontal, material, face, frame, lighter, world, worldHeight, ratio, minPortalWidth, minPortalHeight, entityTransformation, spawningDelay, entitySpawning, buildExitPortal, spawnOnAir, disabledWorlds, particlesColor);
 				oldPortals.remove(oldPortal);
 			} else {
-				createdPortals.add(new CustomPortal(portalClass, name, enabled, displayName, material, face, frame, lighter, world, worldHeight, ratio, minPortalWidth, minPortalHeight, entityTransformation, spawningDelay, entitySpawning, buildExitPortal, spawnOnAir, disabledWorlds, particlesColor, plugin));
+				createdPortals.add(new CustomPortal(portalClass, name, enabled, displayName, horizontal, material, face, frame, lighter, world, worldHeight, ratio, minPortalWidth, minPortalHeight, entityTransformation, spawningDelay, entitySpawning, buildExitPortal, spawnOnAir, disabledWorlds, particlesColor, plugin));
 			}
 		  	portalClass.debug("Loaded "+fileName,2);
 		}

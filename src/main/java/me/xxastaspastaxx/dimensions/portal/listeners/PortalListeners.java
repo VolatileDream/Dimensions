@@ -81,7 +81,7 @@ public class PortalListeners implements Listener {
 		}
 		
         if (e.getAction() == Action.RIGHT_CLICK_BLOCK) {
-        	if (e.getItem() == null || !portalClass.getLighters().contains(e.getItem().getType()) || !portalClass.getBlocks().contains(e.getClickedBlock().getType())) return;
+        	if (e.getItem() == null || !portalClass.getLighters().contains(e.getItem().getType())) return;
         	Block block = e.getClickedBlock().getRelative(e.getBlockFace());
         	if (!portalClass.isPortalAtLocation(block.getLocation())) {
         		if (portalClass.lightPortal(block.getLocation(), IgniteCause.FLINT_AND_STEEL, e.getPlayer(), e.getItem())) {
@@ -271,7 +271,7 @@ public class PortalListeners implements Listener {
         	Block relative = block.getRelative(face);
         	CustomPortal portal = portalClass.getPortalAtLocation(relative.getLocation());
         	if (portal!=null) {
-            	destroyed = !portal.destroy(relative.getLocation(),cause, (LivingEntity) ent);
+            	destroyed = !portal.destroy(relative.getLocation(),cause, ent);
         	}
         }
         return destroyed;

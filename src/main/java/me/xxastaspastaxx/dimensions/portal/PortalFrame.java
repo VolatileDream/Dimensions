@@ -65,8 +65,8 @@ public class PortalFrame implements Listener {
 	boolean zAxis;
 	
 	int task;
-	HashMap<LivingEntity,Long> timer = new HashMap<LivingEntity,Long>();
-	ArrayList<LivingEntity> hold = new ArrayList<LivingEntity>();
+	HashMap<Entity,Long> timer = new HashMap<Entity,Long>();
+	ArrayList<Entity> hold = new ArrayList<Entity>();
 
 	boolean destroyed = false;
 	boolean enabled = false;
@@ -186,7 +186,7 @@ public class PortalFrame implements Listener {
 	public boolean isZAxis() {
 		return zAxis;
 	}
-	
+
 	ArrayList<Player> shown = new ArrayList<Player>();
 	
 	public void startTask() {
@@ -198,6 +198,8 @@ public class PortalFrame implements Listener {
 		enabled = true;
 		task = Bukkit.getScheduler().scheduleSyncRepeatingTask(pc.pl, new Runnable() {
 			public void run() {
+				
+				if (shown.size()==0) return;
 				
 				if (isEntity) {
 					loc.getBlock().setType(Material.AIR);
@@ -212,23 +214,23 @@ public class PortalFrame implements Listener {
 				}
 				
 				for (Entity en : loc.getWorld().getNearbyEntities(fixedLoc, 0.5,0.5,0.5)) {
-					if (!(en instanceof LivingEntity)) continue;
-					if (!pc.enableMobsTeleportation() && !(en instanceof Player)) continue;
+					if (!(en instanceof Entity)) continue;
+					if ((!pc.enableMobsTeleportation() && !(en instanceof Player)) || (!pc.enableEntitiesTeleportation() && !(en instanceof LivingEntity))) continue;
 					if (en instanceof Player && pc.enableNetherPortalEffect()) ((Player) en).sendBlockChange(loc, netherBlockData);
-					if (timer.containsKey(en) || pc.isOnHold((LivingEntity) en)) continue;
+					if (timer.containsKey(en) || pc.isOnHold(en)) continue;
 					if (en.getLocation().getBlock().equals(loc.getBlock())) {
 						int extra = 0;
 						if (en instanceof Player && (((Player) en).getGameMode()==GameMode.CREATIVE || ((Player) en).getGameMode()==GameMode.SPECTATOR)) extra = pc.getTeleportDelay()*1000;
-						timer.put((LivingEntity) en, System.currentTimeMillis()-extra);
-						hold.add((LivingEntity) en);
-						pc.addToHold((LivingEntity) en);
+						timer.put(en, System.currentTimeMillis()-extra);
+						hold.add(en);
+						pc.addToHold(en);
 					}
 				}
 				
-			    Iterator<Entry<LivingEntity,Long>> timerIterator = timer.entrySet().iterator();
+			    Iterator<Entry<Entity,Long>> timerIterator = timer.entrySet().iterator();
 			    while (timerIterator.hasNext()) {
-			    	Entry<LivingEntity,Long> entry = timerIterator.next();
-			    	LivingEntity en = entry.getKey();
+			    	Entry<Entity,Long> entry = timerIterator.next();
+			    	Entity en = entry.getKey();
 			    	Location eloc = en.getLocation();
 			    	if ((eloc.getBlockX()!=loc.getBlockX() || eloc.getBlockY()!=loc.getBlockY() || eloc.getBlockZ()!=loc.getBlockZ()) && (!pc.isPortalAtLocation(en.getLocation()) ||(pc.isPortalAtLocation(en.getLocation()) && !pc.getPortalAtLocation(en.getLocation()).equals(portal)))) {
 			    		timerIterator.remove();
@@ -247,9 +249,9 @@ public class PortalFrame implements Listener {
 					}
 			    }
 			    
-			    Iterator<LivingEntity> holdIterator = hold.iterator();
+			    Iterator<Entity> holdIterator = hold.iterator();
 			    while (holdIterator.hasNext()) {
-			    	LivingEntity en = holdIterator.next();
+			    	Entity en = holdIterator.next();
 					Location eloc = en.getLocation();
 					CustomPortal cp = pc.getPortalAtLocation(eloc);
 					if (cp==null || !cp.equals(portal)) {
@@ -277,19 +279,20 @@ public class PortalFrame implements Listener {
 				public void run() {
 					EntityType type = portal.getEntitySpawn();
 					if (type!=null) {
-						hold.add((LivingEntity) loc.getWorld().spawnEntity(loc, type));
+						hold.add(loc.getWorld().spawnEntity(loc, type));
 					}
 				}
 			}, portal.getEntityDelay(), portal.getEntityDelay());
 		}
 	}
 	
-	public void addToHold(LivingEntity en) {
+	public void addToHold(Entity en) {
 		hold.add(en);
 		pc.addToHold(en);
 	}
 	
 	public void summon(Player p) {
+		if (destroyed) return;
 
 		if (p!=null && (shown.contains(p) || !p.getWorld().equals(loc.getWorld()))) return;
 		if (p==null) {
@@ -372,7 +375,7 @@ public class PortalFrame implements Listener {
 		Bukkit.getScheduler().cancelTask(task);
 		Bukkit.getScheduler().cancelTask(task2);
 		timer.clear();
-		for (LivingEntity en : hold) {
+		for (Entity en : hold) {
 			pc.removeFromHold(en);
 		}
 		hold.clear();
@@ -408,14 +411,29 @@ public class PortalFrame implements Listener {
 	
 	public PortalFrame getBottomFrame() {
 
+		if (portal.isHorizontal()) return this;
 		PortalFrame current = this;
-		while (!current.isOnGround()) current = pc.getFrameAtLocation(loc.clone().add(0,-1,0));
+		while (!current.isOnGround()) current = pc.getFrameAtLocation(current.getLocation().clone().add(0,-1,0));
 		
 		return current;
 	}
 	
+	public PortalFrame getRightFrame() {
+
+		PortalFrame current = this;
+		while (pc.getPortalAtLocation(current.getLocation().getBlock().getRelative(BlockFace.EAST).getLocation())!=null) current = pc.getFrameAtLocation(current.getLocation().clone().add(1,0,0));
+		while (pc.getPortalAtLocation(current.getLocation().getBlock().getRelative(BlockFace.SOUTH).getLocation())!=null) current = pc.getFrameAtLocation(current.getLocation().clone().add(0,0,1));
+		
+		return current;
+	}
+	
+	public PortalFrame getBottomRightFrame() {
+		return getBottomFrame().getRightFrame();
+	}
+	
 	public boolean isOnGround() {
-		return loc.getBlock().getRelative(BlockFace.DOWN).getType()!=Material.AIR;
+		if (portal.isHorizontal()) return true;
+		return pc.getPortalAtLocation(loc.getBlock().getRelative(BlockFace.DOWN).getLocation())==null;
 	}
 	
 	public Object getTag(Object key) {
@@ -424,5 +442,23 @@ public class PortalFrame implements Listener {
 	
 	public void setTag(Object key, Object value) {
 		tags.put(key, value);
+	}
+	
+	public ArrayList<PortalFrame> getCompletePortal() {
+		ArrayList<PortalFrame> result = new ArrayList<PortalFrame>();
+		for (BlockFace face : (portal.isHorizontal()?new BlockFace[]{BlockFace.NORTH}:new BlockFace[]{BlockFace.WEST, BlockFace.NORTH})) {
+			PortalFrame bottomCurrent = getBottomRightFrame();
+			while (bottomCurrent!=null) {
+				PortalFrame current = bottomCurrent;
+				while (current!=null) {
+					if (!result.contains(current)) 
+						result.add(current);
+					current = pc.getFrameAtLocation(current.getLocation().getBlock().getRelative(portal.isHorizontal()?BlockFace.WEST:BlockFace.UP).getLocation());
+				}
+				bottomCurrent = pc.getFrameAtLocation(bottomCurrent.getLocation().getBlock().getRelative(face).getLocation());
+			}
+		}
+		
+		return result;
 	}
 }

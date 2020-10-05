@@ -8,6 +8,7 @@ import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.configuration.file.YamlConfiguration;
+import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.block.BlockIgniteEvent.IgniteCause;
@@ -56,7 +57,7 @@ public class Dimensions {
 		return portalClass.isPortalAtLocation(loc);
 	}
 	
-	public static void addToHold(LivingEntity p) {
+	public static void addToHold(Entity p) {
 		portalClass.addToHold(p);
 	}
 	
@@ -105,8 +106,8 @@ public class Dimensions {
 		return portalClass.getNearestPortalLocation(portal, loc);
 	}
 	
-	public static World getReturnWorld(Player p, CustomPortal portal, boolean update) {
-		return portal.getReturnWorld(p, p.getWorld(), update);
+	public static World getReturnWorld(Player p, CustomPortal portal, boolean update, boolean useDefaultWorld) {
+		return portal.getReturnWorld(p, p.getWorld(), update, useDefaultWorld);
 	}
 
 	public static void addToUsedPortals(Player p, CustomPortal portal) {
@@ -196,4 +197,7 @@ public class Dimensions {
 		return result;
 	}
 	
+	public static boolean isOnHold(Entity en) {
+		return portalClass.isOnHold(en);
+	}
 }

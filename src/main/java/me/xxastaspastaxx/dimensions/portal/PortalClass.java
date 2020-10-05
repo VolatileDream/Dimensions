@@ -10,6 +10,7 @@ import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.block.BlockFace;
+import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.block.BlockIgniteEvent.IgniteCause;
@@ -42,6 +43,7 @@ public class PortalClass {
 	World defaultWorld;
 	boolean enableParticles;
 	boolean enableMobs;
+	boolean enableEntities;
 	int teleportDelay;
 	int searchRadius;
 	int spotSearchRadius;
@@ -60,8 +62,8 @@ public class PortalClass {
 	
 	Main pl;
 	
-	ArrayList<LivingEntity> hold = new ArrayList<LivingEntity>();
-	//HashMap<LivingEntity,Entry<CustomPortal,Long>> timer = new HashMap<LivingEntity,Entry<CustomPortal,Long>>();
+	ArrayList<Entity> hold = new ArrayList<Entity>();
+	//HashMap<Entity,Entry<CustomPortal,Long>> timer = new HashMap<Entity,Entry<CustomPortal,Long>>();
 	
 	public PortalClass(Main pl) {
 		this.pl = pl;
@@ -69,12 +71,13 @@ public class PortalClass {
 		Dimensions.portalClass = this;
 	}
 	
-	public void setSettings(int maxRadius, World defaultWorld, boolean portalParticles, boolean teleportMobs, int portalDelay, int debugLevel, int searchRadius, int spotSearchRadius, boolean consumeItems, boolean netherPortalEffect) {
+	public void setSettings(int maxRadius, World defaultWorld, boolean portalParticles, boolean teleportMobs, boolean enableEntities, int portalDelay, int debugLevel, int searchRadius, int spotSearchRadius, boolean consumeItems, boolean netherPortalEffect) {
 		this.debugLevel = debugLevel;
 		this.maxRadius = maxRadius;
 		this.defaultWorld = defaultWorld;
 		this.enableParticles = portalParticles;
 		this.enableMobs = teleportMobs;
+		this.enableEntities = enableEntities;
 		this.teleportDelay = portalDelay;
 		this.searchRadius = searchRadius;
 		this.spotSearchRadius = spotSearchRadius;
@@ -335,7 +338,7 @@ public class PortalClass {
 		Location closestLocation = null;
 		double closestDistance = (searchRadius/2+1)+searchRadius*portal.getRatio()*0.5;
 		for(Location location : portals) {
-			if (location.getBlock().getRelative(BlockFace.DOWN).getType()!=portal.material) continue;
+			if (!portal.isHorizontal() && (location.getBlock().getRelative(BlockFace.DOWN).getType()!=portal.material)) continue;
 			double dist = location.distance(loc);
 			if (closestDistance>dist) {
 	    		closestLocation = location;
@@ -346,17 +349,17 @@ public class PortalClass {
 		return closestLocation;
 	}
 
-	public boolean isOnHold(LivingEntity p) {
+	public boolean isOnHold(Entity p) {
 		return hold.contains(p);
 	}
 	
-	public void addToHold(LivingEntity p) {
+	public void addToHold(Entity p) {
 		if (!hold.contains(p)) {
 			hold.add(p);
 		}
 	}
 	
-	public void removeFromHold(LivingEntity p) {
+	public void removeFromHold(Entity p) {
 		hold.remove(p);
 	}
 	
@@ -366,6 +369,10 @@ public class PortalClass {
 	
 	public boolean enableMobsTeleportation() {
 		return enableMobs;
+	}
+	
+	public boolean enableEntitiesTeleportation() {
+		return enableMobs && enableEntities;
 	}
 	
 	public void findBestPathAndUse(Player p, World from, World to) {
@@ -382,12 +389,12 @@ public class PortalClass {
 			boolean noPortal = true;
 			for (CustomPortal portal : portals) {
 				if (head.isReturnWorld(p, to)) {
-					head.getReturnWorld(p, head.getWorld(), true);
+					head.getReturnWorld(p, head.getWorld(), true, true);
 					found = true;
 					return;
 				}
 				if (head.isReturnWorld(p, portal.getWorld())) {
-					head.getReturnWorld(p, head.getWorld(), true);
+					head.getReturnWorld(p, head.getWorld(), true, true);
 					head = portal;
 					noPortal = false;
 					break;

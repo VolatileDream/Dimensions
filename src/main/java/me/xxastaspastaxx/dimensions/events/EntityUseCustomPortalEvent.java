@@ -1,7 +1,7 @@
 package me.xxastaspastaxx.dimensions.events;
 
 import org.bukkit.Location;
-import org.bukkit.entity.LivingEntity;
+import org.bukkit.entity.Entity;
 import org.bukkit.event.Cancellable;
 import org.bukkit.event.Event;
 import org.bukkit.event.HandlerList;
@@ -13,7 +13,7 @@ public class EntityUseCustomPortalEvent extends Event implements Cancellable {
     
     private boolean cancelled;
     
-    LivingEntity entity;
+    Entity entity;
     Location portalLocation;
     CustomPortal portal;
     
@@ -25,7 +25,7 @@ public class EntityUseCustomPortalEvent extends Event implements Cancellable {
     Location buildLocation;
     boolean zAxis;
     
-    public EntityUseCustomPortalEvent(LivingEntity entity, Location portalLocation, CustomPortal portal, boolean buildExitPortal,boolean forceTP, boolean bungee) {
+    public EntityUseCustomPortalEvent(Entity entity, Location portalLocation, CustomPortal portal, boolean buildExitPortal,boolean forceTP, boolean bungee) {
     	this.entity=entity;
     	this.portalLocation=portalLocation;
     	this.portal=portal;
@@ -34,7 +34,7 @@ public class EntityUseCustomPortalEvent extends Event implements Cancellable {
     	this.bungee = bungee;
     }
 
-    public LivingEntity getEntity() {
+    public Entity getEntity() {
     	return entity;
     }
     
