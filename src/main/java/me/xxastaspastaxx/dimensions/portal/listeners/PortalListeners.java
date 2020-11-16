@@ -47,6 +47,7 @@ import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.plugin.Plugin;
 
 import me.xxastaspastaxx.dimensions.Dimensions;
+import me.xxastaspastaxx.dimensions.Utils.DimensionsSettings;
 import me.xxastaspastaxx.dimensions.events.DestroyCause;
 import me.xxastaspastaxx.dimensions.portal.CustomPortal;
 import me.xxastaspastaxx.dimensions.portal.PortalClass;
@@ -86,7 +87,7 @@ public class PortalListeners implements Listener {
         	if (!portalClass.isPortalAtLocation(block.getLocation())) {
         		if (portalClass.lightPortal(block.getLocation(), IgniteCause.FLINT_AND_STEEL, e.getPlayer(), e.getItem())) {
 					e.setCancelled(true);
-					if (portalClass.consumeItems() && e.getPlayer().getGameMode()!=GameMode.CREATIVE) {
+					if (DimensionsSettings.consumeItems() && e.getPlayer().getGameMode()!=GameMode.CREATIVE) {
 						ItemStack item = e.getItem();
 						if (item.getType().toString().contains("BUCKET") && item.getType()!=Material.BUCKET) {
 							item.setType(Material.BUCKET);

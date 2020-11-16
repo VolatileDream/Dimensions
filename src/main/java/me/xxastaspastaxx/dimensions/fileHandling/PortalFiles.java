@@ -30,6 +30,7 @@ import com.google.gson.GsonBuilder;
 import me.xxastaspastaxx.dimensions.Dimensions;
 import me.xxastaspastaxx.dimensions.Main;
 import me.xxastaspastaxx.dimensions.Messages;
+import me.xxastaspastaxx.dimensions.Utils.DimensionsSettings;
 import me.xxastaspastaxx.dimensions.portal.CustomPortal;
 import me.xxastaspastaxx.dimensions.portal.PortalClass;
 import me.xxastaspastaxx.dimensions.portal.PortalFrame;
@@ -62,7 +63,8 @@ public class PortalFiles implements Listener {
 		YamlConfiguration portalSettings = YamlConfiguration.loadConfiguration(settings);
 		
 
-		portalSettings.addDefault("DebugLevel", 0);
+		portalSettings.addDefault("Debug.Level", 0);
+		portalSettings.addDefault("GenerateNewWorlds", false);
 		portalSettings.addDefault("MaxRadius", 10);
 		portalSettings.addDefault("DefaultWorld", "world");
 		portalSettings.addDefault("EnableParticles", false);
@@ -82,12 +84,12 @@ public class PortalFiles implements Listener {
   	  	} catch (IOException e) {
 			e.printStackTrace();
 		}
-  	  	
+
 	  	portalClass = new PortalClass(pl);
 
-	  	reloadSettings();
+	  	DimensionsSettings.reloadSettings();
 	  	
-	  	
+
 		//Create and register all portals
 		reloadPortals();
 
@@ -266,7 +268,6 @@ public class PortalFiles implements Listener {
 	}
 	
 	public void onDisable() {
-		
 		save();
 		for (PortalFrame frame : portalClass.getFrames()) {
 			frame.remove(null);
@@ -320,28 +321,6 @@ public class PortalFiles implements Listener {
 		}
 	}
 
-	public boolean reloadSettings() {
-		
-		File settings = new File("plugins/Dimensions/Settings.yml");
-		YamlConfiguration portalSettings = YamlConfiguration.loadConfiguration(settings);
-		
-  	  	int debugLevel = portalSettings.getInt("DebugLevel");
-  	  	int maxRadius = portalSettings.getInt("MaxRadius");
-  	  	World defaultWorld = Bukkit.getWorld(portalSettings.getString("DefaultWorld"));
-  	  	boolean portalParticles = portalSettings.getBoolean("EnableParticles");
-  	  	boolean enableMobs = portalSettings.getBoolean("EnableMobsTeleportation");
-  	  	boolean enableEntities = portalSettings.getBoolean("EnableNonLivingEntitiesTeleportation");
-  	  	int teleportDelay = portalSettings.getInt("TeleportDelay");
-  	  	int searchRadius = portalSettings.getInt("SearchRadius");
-  	  	int spotSearchRadius = portalSettings.getInt("SafeSpotSearchRadius");
-  	  	boolean consumeItems = portalSettings.getBoolean("ConsumeItems");
-  	  	boolean netherPortalEffect = portalSettings.getBoolean("NetherPortalEffect");
-		
-  	  	portalClass.setSettings(maxRadius, defaultWorld, portalParticles, enableMobs, enableEntities, teleportDelay, debugLevel, searchRadius, spotSearchRadius, consumeItems, netherPortalEffect);
-  	  	
-		return true;
-	}
-
 	public boolean reloadPortals() {
 		File portalFolder = new File("plugins/Dimensions/Portals");
 		if (!portalFolder.exists()) portalFolder.mkdir();
@@ -386,9 +365,13 @@ public class PortalFiles implements Listener {
 			String worldName = portalConfig.getString("World.Name");
 			World world = Bukkit.getWorld(worldName);
 			if (!Bukkit.getServer().getWorlds().contains(world)) {
-				world = Bukkit.getServer().createWorld(new WorldCreator(worldName));
+				if (DimensionsSettings.isGenerateWorlds()) {
+					world = Bukkit.getServer().createWorld(new WorldCreator(worldName));
+				} else {
+					continue;
+				}
 			}
-			if (world.equals(portalClass.getDefaultWorld())) {
+			if (world.equals(DimensionsSettings.getDefaultWorld())) {
 				System.out.println("Disabling portal: "+name);
 				System.out.println("Reason: There cannot be a portal that leads to the default world");
 				enabled = false;
@@ -449,12 +432,12 @@ public class PortalFiles implements Listener {
 		
 
 		portalClass.setPortals(createdPortals, lighters, frameMaterials, blocks);
-		
+
 		return true;
 	}
 	
 	public boolean reloadAll() {
-		return reloadSettings() && reloadPortals() && Messages.reload();
+		return DimensionsSettings.reloadSettings() && reloadPortals() && Messages.reload();
 	}
-
+	
 }

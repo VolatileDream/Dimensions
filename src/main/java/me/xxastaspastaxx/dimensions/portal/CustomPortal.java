@@ -31,6 +31,7 @@ import org.bukkit.potion.PotionEffect;
 
 import me.xxastaspastaxx.dimensions.Dimensions;
 import me.xxastaspastaxx.dimensions.Messages;
+import me.xxastaspastaxx.dimensions.Utils.DimensionsSettings;
 import me.xxastaspastaxx.dimensions.events.CustomPortalDestroyEvent;
 import me.xxastaspastaxx.dimensions.events.CustomPortalIgniteEvent;
 import me.xxastaspastaxx.dimensions.events.DestroyCause;
@@ -56,7 +57,7 @@ public class CustomPortal {
 	String face;
 	Material frame;
 	Material lighter;
-	
+
 	World world;
 	int worldHeight;
 	String ratio;
@@ -84,7 +85,7 @@ public class CustomPortal {
 		this.plugin = plugin;
 		
 		this.portalClass = portalClass;
-		this.maxRadius = portalClass.getMaxRadius();
+		this.maxRadius = DimensionsSettings.getMaxRadius();
 		
 		this.name = name;
 		this.enabled = enabled;
@@ -112,7 +113,7 @@ public class CustomPortal {
 		this.plugin = portal.plugin;
 		
 		this.portalClass = portal.portalClass;
-		this.maxRadius = portal.portalClass.getMaxRadius();
+		this.maxRadius = DimensionsSettings.getMaxRadius();
 		
 		this.name = portal.name;
 		this.enabled = portal.enabled;
@@ -509,7 +510,8 @@ public class CustomPortal {
 		if (portal==null)
 			return null;
 		
-		if (portal[0].length<getMinPortalWidth() || portal[0].length>portalClass.maxRadius || portal.length<getMinPortalHeight() || portal.length>portalClass.maxRadius) return null;
+		int maxRadius = DimensionsSettings.getMaxRadius();
+		if (portal[0].length<getMinPortalWidth() || portal[0].length>maxRadius || portal.length<getMinPortalHeight() || portal.length>maxRadius) return null;
 		
 		if (!accepted)
 			if (!isAcceptedPortal(portal, checkEmpty, load))
@@ -549,7 +551,8 @@ public class CustomPortal {
 	}
 	
 	public boolean isAcceptedPortal(Block[][] portal, boolean checkEmpty, boolean load) {
-		if (portal[0].length<getMinPortalWidth() || portal[0].length>portalClass.maxRadius || portal.length<getMinPortalHeight() || portal.length>portalClass.maxRadius) return false;
+		int maxRadius = DimensionsSettings.getMaxRadius();
+		if (portal[0].length<getMinPortalWidth() || portal[0].length>maxRadius || portal.length<getMinPortalHeight() || portal.length>maxRadius) return false;
 		
 		for (int y = 0;y<portal.length;y++) {
 			for (int side = 0;side<portal[0].length;side++) {
@@ -834,7 +837,7 @@ public class CustomPortal {
 	}
 
 	public Location spiralSearch(Location teleportLocation, boolean zAxis,boolean checkPlatform) {
-	    int size=portalClass.getSpotSearchRadius();
+	    int size=DimensionsSettings.getSpotSearchRadius();
 	    for (int siz = 4;siz<=size;siz++) {
 			for (int y=-siz+3;y<=siz-3;y++) {
 				for (int sz=1;sz<=siz;sz++) {
@@ -1015,7 +1018,7 @@ public class CustomPortal {
 		
 		ArrayList<World> history = useHistory.get(p.getUniqueId());
 		
-		World world = useDefaultWorld ? portalClass.getDefaultWorld() : getWorld();
+		World world = useDefaultWorld ? DimensionsSettings.getDefaultWorld() : getWorld();
 		if (from.equals(getWorld())) {
 			if (history != null && !history.isEmpty()) {
 				world = history.get(0);
@@ -1095,7 +1098,7 @@ public class CustomPortal {
 
 		ArrayList<World> history = useHistory.get(p.getUniqueId());
 		
-		World world = portalClass.getDefaultWorld();
+		World world = DimensionsSettings.getDefaultWorld();
 		if (history != null && !history.isEmpty()) {
 			world = history.get(0);
 		}

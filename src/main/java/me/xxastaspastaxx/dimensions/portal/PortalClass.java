@@ -26,6 +26,7 @@ import com.comphenix.protocol.events.PacketListener;
 import me.xxastaspastaxx.dimensions.Dimensions;
 import me.xxastaspastaxx.dimensions.Main;
 import me.xxastaspastaxx.dimensions.Messages;
+import me.xxastaspastaxx.dimensions.Utils.DimensionsSettings;
 import me.xxastaspastaxx.dimensions.fileHandling.HistoryWorlds;
 import me.xxastaspastaxx.dimensions.fileHandling.LocationsFile;
 import me.xxastaspastaxx.dimensions.fileHandling.PortalLocations;
@@ -37,19 +38,6 @@ public class PortalClass {
 	ArrayList<Material> lighters = new ArrayList<Material>();
 	ArrayList<Material> frameMaterials = new ArrayList<Material>();
 	ArrayList<Material> blocks = new ArrayList<Material>();
-	
-	int debugLevel;
-	int maxRadius;
-	World defaultWorld;
-	boolean enableParticles;
-	boolean enableMobs;
-	boolean enableEntities;
-	int teleportDelay;
-	int searchRadius;
-	int spotSearchRadius;
-	boolean consumeItems;
-	boolean netherPortalEffect;
-	
 
 	HistoryWorlds historyWorlds;
 	PortalLocations portalLocations;
@@ -63,26 +51,11 @@ public class PortalClass {
 	Main pl;
 	
 	ArrayList<Entity> hold = new ArrayList<Entity>();
-	//HashMap<Entity,Entry<CustomPortal,Long>> timer = new HashMap<Entity,Entry<CustomPortal,Long>>();
 	
 	public PortalClass(Main pl) {
 		this.pl = pl;
 		
 		Dimensions.portalClass = this;
-	}
-	
-	public void setSettings(int maxRadius, World defaultWorld, boolean portalParticles, boolean teleportMobs, boolean enableEntities, int portalDelay, int debugLevel, int searchRadius, int spotSearchRadius, boolean consumeItems, boolean netherPortalEffect) {
-		this.debugLevel = debugLevel;
-		this.maxRadius = maxRadius;
-		this.defaultWorld = defaultWorld;
-		this.enableParticles = portalParticles;
-		this.enableMobs = teleportMobs;
-		this.enableEntities = enableEntities;
-		this.teleportDelay = portalDelay;
-		this.searchRadius = searchRadius;
-		this.spotSearchRadius = spotSearchRadius;
-		this.consumeItems = consumeItems;
-		this.netherPortalEffect = netherPortalEffect;
 	}
 	
 	public Main getPlugin() {
@@ -211,6 +184,7 @@ public class PortalClass {
 		
 		if (isPortalAtLocation(loc)) return false;
 		
+		
 		debug("Attempting to light a portal at "+loc,2);
 		if ((entity instanceof Player) && pl.getWorldGuardFlags()!=null && !pl.getWorldGuardFlags().testState((Player) entity, loc,WorldGuardFlags.IgniteCustomPortal)) {
 			entity.sendMessage(Messages.get("worldGuardDenyMessage"));
@@ -226,7 +200,6 @@ public class PortalClass {
 			}
 		}
 		
-
 		debug("No portal could be found in "+loc,2);
 		return false;
 	}
@@ -312,14 +285,6 @@ public class PortalClass {
 		portalLocations.removeLocation(portal, loc.getBlock().getLocation());
 	}
 	
-	public int getMaxRadius() {
-		return maxRadius;
-	}
-	
-	public World getDefaultWorld() {
-		return defaultWorld;
-	}
-	
 	public CustomPortal getPortalFromName(String portalName) {
 		for (CustomPortal portal : portals) {
 			if (portal.getName().contentEquals(portalName)) {
@@ -336,6 +301,7 @@ public class PortalClass {
 		if (portals==null) return null;
 		
 		Location closestLocation = null;
+		int searchRadius = DimensionsSettings.getSearchRadius();
 		double closestDistance = (searchRadius/2+1)+searchRadius*portal.getRatio()*0.5;
 		for(Location location : portals) {
 			if (!portal.isHorizontal() && (location.getBlock().getRelative(BlockFace.DOWN).getType()!=portal.material)) continue;
@@ -365,14 +331,6 @@ public class PortalClass {
 	
 	public boolean isNetherPortalEnabled() {
 		return allowNetherPortal;
-	}
-	
-	public boolean enableMobsTeleportation() {
-		return enableMobs;
-	}
-	
-	public boolean enableEntitiesTeleportation() {
-		return enableMobs && enableEntities;
 	}
 	
 	public void findBestPathAndUse(Player p, World from, World to) {
@@ -457,26 +415,10 @@ public class PortalClass {
 		
 		return result;
 	}
-
-	public int getTeleportDelay() {
-		return teleportDelay;
-	}
 	
 	public void debug(String msg, int lvl) {
-		if (debugLevel>=lvl)
-		System.out.println(msg);
-	}
-
-	public int getSpotSearchRadius() {
-		return spotSearchRadius;
-	}
-	
-	public boolean consumeItems() {
-		return consumeItems;
-	}
-	
-	public boolean enableNetherPortalEffect() {
-		return netherPortalEffect;
+		if (DimensionsSettings.getDebugLevel()>=lvl)
+		System.out.println("[Dimensions Debugger]" + msg);
 	}
 	
 	public ArrayList<PortalFrame> getNearbyPortalFrames(Location loc, int radius) {

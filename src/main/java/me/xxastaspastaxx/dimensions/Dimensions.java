@@ -90,28 +90,12 @@ public class Dimensions {
 		portalClass.removeLocation(portal, loc);
 	}
 	
-	public static int getMaxRadius() {
-		return portalClass.getMaxRadius();
-	}
-	
-	public static World getDefaultWorld() {
-		return portalClass.getDefaultWorld();
-	}
-	
 	public static CustomPortal getPortalFromName(String portalName) {
 		return portalClass.getPortalFromName(portalName);
 	}
 	
 	public static Location getNearestPortalLocation(CustomPortal portal, Location loc) {
 		return portalClass.getNearestPortalLocation(portal, loc);
-	}
-	
-	public static World getReturnWorld(Player p, CustomPortal portal, boolean update, boolean useDefaultWorld) {
-		return portal.getReturnWorld(p, p.getWorld(), update, useDefaultWorld);
-	}
-
-	public static void addToUsedPortals(Player p, CustomPortal portal) {
-		portal.addToUsedPortals(p, p.getWorld());
 	}
 	
 	public static boolean isNetherPortalEnabled() {
@@ -199,5 +183,9 @@ public class Dimensions {
 	
 	public static boolean isOnHold(Entity en) {
 		return portalClass.isOnHold(en);
+	}
+	
+	public static void debug(String msg, int lvl) {
+		portalClass.debug(msg, lvl);
 	}
 }
