@@ -21,6 +21,7 @@ import org.bukkit.event.block.BlockBurnEvent;
 import org.bukkit.event.block.BlockFadeEvent;
 import org.bukkit.event.block.BlockFromToEvent;
 import org.bukkit.event.block.BlockGrowEvent;
+import org.bukkit.event.block.BlockPhysicsEvent;
 import org.bukkit.event.block.BlockIgniteEvent.IgniteCause;
 import org.bukkit.event.block.BlockPistonExtendEvent;
 import org.bukkit.event.block.BlockPistonRetractEvent;
@@ -46,10 +47,10 @@ import org.bukkit.inventory.meta.Damageable;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.plugin.Plugin;
 
-import me.xxastaspastaxx.dimensions.Dimensions;
+import me.xxastaspastaxx.dimensions.Utils.Dimensions;
 import me.xxastaspastaxx.dimensions.Utils.DimensionsSettings;
 import me.xxastaspastaxx.dimensions.events.DestroyCause;
-import me.xxastaspastaxx.dimensions.portal.CustomPortal;
+import me.xxastaspastaxx.dimensions.portal.CompletePortal;
 import me.xxastaspastaxx.dimensions.portal.PortalClass;
 
 public class PortalListeners implements Listener {
@@ -127,9 +128,9 @@ public class PortalListeners implements Listener {
 				List<Block> los = p.getLineOfSight(null, 5);
 				for (Block block : los) {
 					if (!Dimensions.isAir(block.getType()) && !portalClass.getFrameMaterials().contains(block.getType())) break;
-					CustomPortal portal = portalClass.getPortalAtLocation(block.getLocation());
+					CompletePortal portal = portalClass.getPortalAtLocation(block.getLocation());
 					if (portal!=null) {
-						portal.destroy(block.getLocation(), DestroyCause.PLAYER_FRAME, p);
+						portal.getPortal().destroy(portal, DestroyCause.PLAYER_FRAME, p);
 					}
 				}
 			} catch (IllegalStateException ex) {}
@@ -165,9 +166,9 @@ public class PortalListeners implements Listener {
 		Entity exploder = e.getEntity();
 		for (Location loc : portalClass.getPortalLocations()) {
 			if (exploder.getWorld()!=loc.getWorld() || exploder.getLocation().distance(loc)>e.getRadius()+2) continue;
-			CustomPortal portal = portalClass.getPortalAtLocation(loc);
+			CompletePortal portal = portalClass.getPortalAtLocation(loc);
 			if (portal!=null) {
-				if (!portal.destroy(loc,DestroyCause.ENTITY, (exploder instanceof LivingEntity)?(LivingEntity) exploder:null)) {
+				if (!portal.getPortal().destroy(portal,DestroyCause.ENTITY, (exploder instanceof LivingEntity)?(LivingEntity) exploder:null)) {
 					e.setCancelled(true);
 				}
 			}
@@ -260,6 +261,11 @@ public class PortalListeners implements Listener {
 		e.setCancelled(onBlockChange(e.getBlock(),e.getPlayer(),DestroyCause.PLAYER));
 	}
 	
+	@EventHandler(ignoreCancelled = true)
+	public void onBlockChange(BlockPhysicsEvent e) {
+		e.setCancelled(onBlockChange(e.getBlock(),null,DestroyCause.BLOCK_PHYSICS));
+	}
+	
 	//BLOCK CHANGE EVENT ^^^^^
 	
 	public boolean onBlockChange(Block block, Entity ent, DestroyCause cause) {
@@ -270,9 +276,9 @@ public class PortalListeners implements Listener {
         for (BlockFace face : new BlockFace[]{BlockFace.WEST, BlockFace.EAST, BlockFace.NORTH, BlockFace.SOUTH, BlockFace.DOWN, BlockFace.UP})
         {
         	Block relative = block.getRelative(face);
-        	CustomPortal portal = portalClass.getPortalAtLocation(relative.getLocation());
+        	CompletePortal portal = portalClass.getPortalAtLocation(relative.getLocation());
         	if (portal!=null) {
-            	destroyed = !portal.destroy(relative.getLocation(),cause, ent);
+            	destroyed = !portal.getPortal().destroy(portal,cause, ent);
         	}
         }
         return destroyed;

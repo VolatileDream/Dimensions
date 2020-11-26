@@ -13,9 +13,9 @@ import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
 
 import me.xxastaspastaxx.dimensions.Main;
-import me.xxastaspastaxx.dimensions.Messages;
+import me.xxastaspastaxx.dimensions.Utils.Messages;
+import me.xxastaspastaxx.dimensions.portal.CompletePortal;
 import me.xxastaspastaxx.dimensions.portal.PortalClass;
-import me.xxastaspastaxx.dimensions.portal.PortalFrame;
 
 public class DimensionsCommands implements CommandExecutor {
 
@@ -147,11 +147,12 @@ public class DimensionsCommands implements CommandExecutor {
 			//Commands
 			if (args[0].equalsIgnoreCase("clear") && args.length==2) {
 				if (hasPermission(p, args[0].toLowerCase())) {
-					Iterator<PortalFrame> iterator = pc.getFrames().iterator();
+					Iterator<CompletePortal> iterator = pc.getCompletePortals().iterator();
 					while (iterator.hasNext()) {
-						PortalFrame frame = iterator.next();
-						if (args[1].equalsIgnoreCase("all") || (args[1].equalsIgnoreCase(frame.getLocation().getWorld().getName())) || (args[1].equalsIgnoreCase(frame.getPortal().getName()))) {
-							frame.destroy(true, false);
+						CompletePortal complete = iterator.next();
+						if (args[1].equalsIgnoreCase("all") || (args[1].equalsIgnoreCase(complete.getFrames().get(0).getLocation().getWorld().getName())) || (args[1].equalsIgnoreCase(complete.getPortal().getName()))) {
+							iterator.remove();
+							complete.destroy(true);
 						}
 					}
 					p.sendMessage(prefix+"§aRemoved §c"+args[1]+"§a portals");

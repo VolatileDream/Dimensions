@@ -29,9 +29,9 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.potion.PotionEffect;
 
-import me.xxastaspastaxx.dimensions.Dimensions;
-import me.xxastaspastaxx.dimensions.Messages;
+import me.xxastaspastaxx.dimensions.Utils.Dimensions;
 import me.xxastaspastaxx.dimensions.Utils.DimensionsSettings;
+import me.xxastaspastaxx.dimensions.Utils.Messages;
 import me.xxastaspastaxx.dimensions.events.CustomPortalDestroyEvent;
 import me.xxastaspastaxx.dimensions.events.CustomPortalIgniteEvent;
 import me.xxastaspastaxx.dimensions.events.DestroyCause;
@@ -178,7 +178,7 @@ public class CustomPortal {
 				frame1.summon(null);
 			} else {
 				framesIter.remove();
-				frame1.destroy(true,false);
+				frame1.destroy(true);
 			}
 		}
 	}
@@ -189,9 +189,9 @@ public class CustomPortal {
 		while (framesIter.hasNext()) {
 			PortalFrame frame1 = framesIter.next();
 			framesIter.remove();
-			frame1.destroy(true,false);
+			frame1.destroy(true);
 		}
-		portalClass.frames.remove(this);
+		portalClass.removePortals(this);
 	}
 	
 	public String getName() {
@@ -533,7 +533,7 @@ public class CustomPortal {
 		results[1] = max;
 		results[2] = extraMin;
 		results[3] = extraMax;
-		return Arrays.asList(results, getBlocks(portal));
+		return Arrays.asList(results, getBlocks(portal), portal);
 	}
 	
 	public List<Block> getBlocks(Block[][] portal) {
@@ -598,49 +598,57 @@ public class CustomPortal {
 	public boolean lightPortal(Location loc, IgniteCause cause, Entity igniter, boolean load, ItemStack lighter) {
 		List<Object> portal = isPortal(loc, true, load);
 		if (portal==null) return false;
+			
+		Location[] portalLocations = (Location[]) portal.get(0);
 		
-		@SuppressWarnings("unchecked")
-		List<Block> blocks = (List<Block>) portal.get(1);
+		Location min = portalLocations[0].clone().add(portalLocations[2]);
+		Location max = portalLocations[1].clone().add(portalLocations[3]);
 		
-		CustomPortalIgniteEvent event = new CustomPortalIgniteEvent(loc, this, blocks, cause, igniter, load, lighter);
+		if (getDisabledWorlds().contains(loc.getWorld())) {
+			if (igniter!=null && (igniter instanceof Player)) {
+				String message = Messages.get("disabledWorldMesasge");
+				if (!message.equalsIgnoreCase("")) {
+					igniter.sendMessage(message.replace("%player%", igniter.getName()).replace("%world%", igniter.getWorld().getName()).replace("%portal%", getDisplayName()));
+				}
+			}
+			return false;
+		}
+		
+		if (min.getWorld().equals(getWorld()) && (min.getY()>getWorldHeight() || max.getY()>getWorldHeight())) {
+			if (igniter!=null && (igniter instanceof Player)) {
+				String message = Messages.get("maxHeightExceededDenyMessage");
+				if (!message.equalsIgnoreCase("")) {
+					igniter.sendMessage(message.replace("%player%", igniter.getName()).replace("%world%", igniter.getWorld().getName()).replace("%portal%", getDisplayName()).replace("%maxWorldHeight%", ""+getWorldHeight()));
+				}
+			}
+			return false;
+		}
+		
+		ArrayList<PortalFrame> completeFrames = new ArrayList<PortalFrame>();
+
+		CompletePortal complete = new CompletePortal(this, portal,portalLocations[0].getZ()!=portalLocations[1].getZ());
+		for(int y = (int) Math.min(max.getBlockY(), min.getBlockY()); y <= (int) Math.max(min.getBlockY(), max.getBlockY()); y++) {
+			for(int x = (int) Math.max(max.getBlockX(), min.getBlockX()); x >= (int) Math.min(min.getBlockX(), max.getBlockX()); x--) {
+				for(int z = (int) Math.max(max.getBlockZ(), min.getBlockZ()); z >= (int) Math.min(min.getBlockZ(), max.getBlockZ()); z--) {
+					Location blockLocation = new Location(loc.getWorld(),x,y,z);
+					completeFrames.add(new PortalFrame(complete, blockLocation,complete.isZAxis()));
+				}
+			}
+		}
+		complete.setFrames(completeFrames);
+			
+		CustomPortalIgniteEvent event = new CustomPortalIgniteEvent(complete, cause, igniter, load, lighter);
 		Bukkit.getServer().getPluginManager().callEvent(event);
 		if (!event.isCancelled()) {
 			
-			Location[] portalLocations = (Location[]) portal.get(0);
-			
-			Location min = portalLocations[0].add(portalLocations[2]);
-			Location max = portalLocations[1].add(portalLocations[3]);
-			
-			if (getDisabledWorlds().contains(loc.getWorld())) {
-				if (igniter!=null && (igniter instanceof Player)) {
-					String message = Messages.get("disabledWorldMesasge");
-					if (!message.equalsIgnoreCase("")) {
-						igniter.sendMessage(message.replace("%player%", igniter.getName()).replace("%world%", igniter.getWorld().getName()).replace("%portal%", getDisplayName()));
-					}
-				}
-				return false;
+			for (PortalFrame frame : complete.getFrames()) {
+				frame.summon(null);
 			}
-			
-			if (min.getWorld().equals(getWorld()) && (min.getY()>getWorldHeight() || max.getY()>getWorldHeight())) {
-				if (igniter!=null && (igniter instanceof Player)) {
-					String message = Messages.get("maxHeightExceededDenyMessage");
-					if (!message.equalsIgnoreCase("")) {
-						igniter.sendMessage(message.replace("%player%", igniter.getName()).replace("%world%", igniter.getWorld().getName()).replace("%portal%", getDisplayName()).replace("%maxWorldHeight%", ""+getWorldHeight()));
-					}
-				}
-				return false;
-			}
-			
-			for(int y = (int) Math.min(max.getBlockY(), min.getBlockY()); y <= (int) Math.max(min.getBlockY(), max.getBlockY()); y++) {
-				for(int x = (int) Math.max(max.getBlockX(), min.getBlockX()); x >= (int) Math.min(min.getBlockX(), max.getBlockX()); x--) {
-					for(int z = (int) Math.max(max.getBlockZ(), min.getBlockZ()); z >= (int) Math.min(min.getBlockZ(), max.getBlockZ()); z--) {
-						Location blockLocation = new Location(loc.getWorld(),x,y,z);
-						setFrameBlock(blockLocation, min.getZ()!=max.getZ(), load);
-					}
-				}
-			}
-			
+
+			portalClass.addPortal(complete);
 			return true;
+		} else {
+			complete.destroy(true);
 		}
 
 		return false;
@@ -701,8 +709,8 @@ public class CustomPortal {
 		if (portal==null) return false;
 		Location[] portalLocations = (Location[]) portal.get(0);
 		
-		Location min = portalLocations[0].add(portalLocations[2]);
-		Location max = portalLocations[1].add(portalLocations[3]);
+		Location min = portalLocations[0];
+		Location max = portalLocations[1];
 		
 		if (min.getZ()!=max.getZ()) {
 			return true;
@@ -711,32 +719,16 @@ public class CustomPortal {
 		}
 	}
 	
-	public PortalFrame setFrameBlock(Location loc, boolean zAxis, boolean load) {
-		if (loc.getWorld().equals(getWorld()) && loc.getY()>getWorldHeight()) return null;
-		if (!load && portalClass.isPortalAtLocation(loc)) return null;
-		
-		PortalFrame frame = new PortalFrame(portalClass,this,loc,zAxis);
-		if (portalClass.addFrame(this,frame)) {
-			if (!load) portalClass.addLocation(this,loc);
-		} else {
-			portalClass.removeLocation(this, loc);
-		}
-		return frame;
-	}
-	
-	public boolean destroy(Location loc, DestroyCause cuase, Entity entity) {
-		if ((entity instanceof Player) && portalClass.getPlugin().getWorldGuardFlags()!=null && !portalClass.getPlugin().getWorldGuardFlags().testState((Player) entity, loc,WorldGuardFlags.DestroyCustomPortal)) {
+	public boolean destroy(CompletePortal complete, DestroyCause cuase, Entity entity) {
+		if ((entity instanceof Player) && portalClass.getPlugin().getWorldGuardFlags()!=null && !portalClass.getPlugin().getWorldGuardFlags().testState((Player) entity, complete.getLocation(),WorldGuardFlags.DestroyCustomPortal)) {
 			entity.sendMessage(Messages.get("worldGuardDenyMessage"));
 			return false;
 		}
 		
-		CustomPortalDestroyEvent event = new CustomPortalDestroyEvent(loc, this, cuase, entity);
+		CustomPortalDestroyEvent event = new CustomPortalDestroyEvent(complete, cuase, entity);
 		Bukkit.getServer().getPluginManager().callEvent(event);
 		if (!event.isCancelled()) {
-			PortalFrame frame = portalClass.getFrameAtLocation(loc);
-			if (frame!=null) {
-				return frame.destroy(true, true);
-			}
+			return complete.destroy(true);
 		}
 		
 		return false;
@@ -746,7 +738,7 @@ public class CustomPortal {
 	//Find the location that the player must go when entering a portal
 	public Location calculateTeleportLocation(Entity p, EntityUseCustomPortalEvent event) {
 		
-		Location loc = event.getLocation();
+		Location loc = event.getPortal().getLocation();
 		Location teleportLocation;
 
 		if (getWorldHeight()>0) loc.setY(loc.getY()/(256/getWorldHeight()));
@@ -939,7 +931,7 @@ public class CustomPortal {
 
 	}
 	
-	public boolean usePortal(Entity p, boolean forceTP, World fromWorld, boolean bungee) {
+	public boolean usePortal(CompletePortal complete, Entity p, boolean forceTP, World fromWorld, boolean bungee) {
 		if (!forceTP && ((p instanceof Player) && portalClass.getPlugin().getWorldGuardFlags()!=null && !portalClass.getPlugin().getWorldGuardFlags().testState((Player) p, p.getLocation(),WorldGuardFlags.UseCustomPortal))) {
 			p.sendMessage(Messages.get("worldGuardDenyMessage"));
 			return false;
@@ -948,14 +940,15 @@ public class CustomPortal {
 		//Disable teleportation if player is in the disabled worlds
 		if (getDisabledWorlds().contains(fromWorld)) return false;
 		//Call event for custom plugins that want to extend the possibilities of the plugin
-		EntityUseCustomPortalEvent event = new EntityUseCustomPortalEvent(p, p.getLocation(), this, getBuildExitPortal(),forceTP, bungee);
+		EntityUseCustomPortalEvent event = new EntityUseCustomPortalEvent(p, p.getLocation(), complete, getBuildExitPortal(),forceTP, bungee);
 		Bukkit.getServer().getPluginManager().callEvent(event);
 		if (!event.isCancelled()) {
 			//Calculate teleport location and teleport the player there
 			Location startLocation = event.getLocation();
 			if (startLocation.getWorld().equals(getWorld()) && startLocation.getY()>getWorldHeight()) startLocation.setY(getWorldHeight()-5);
 			event.setLocation(startLocation);
-			Location teleportLocation = calculateTeleportLocation(p, event);
+			Location teleportLocation = complete==null?calculateTeleportLocation(p, event):complete.getLinkedLocation().clone();
+			teleportLocation.setDirection(p.getLocation().getDirection());
 			EntityTeleportCustomPortalEvent tpEvent = new EntityTeleportCustomPortalEvent(event,teleportLocation,p.getLocation());
 			tpEvent.setCancelled(teleportLocation==null || event.isForcedTeleport() || getDisabledWorlds().contains(teleportLocation.getWorld()));
 			Bukkit.getServer().getPluginManager().callEvent(tpEvent);
@@ -1045,9 +1038,13 @@ public class CustomPortal {
 		Location teleportLocation = event.getBuildLocation();
 		
 		if (event.getBuildExitPortal()) {
+
+			boolean zAxis = event.getZaxis();
+			
+			ArrayList<PortalFrame> completeFrames = new ArrayList<PortalFrame>();
+			CompletePortal complete = new CompletePortal(this, isPortal(teleportLocation, true, false),zAxis);
 			
 			if (!isHorizontal()) {
-				boolean zAxis = event.getZaxis();
 				
 				//build a portal
 				boolean added = false;
@@ -1072,9 +1069,12 @@ public class CustomPortal {
 					setBlock(teleportLocation.getBlock().getRelative(BlockFace.UP,i).getRelative(!zAxis ? BlockFace.EAST : BlockFace.NORTH));
 					setBlock(teleportLocation.getBlock().getRelative(BlockFace.UP,i).getRelative(!zAxis ? BlockFace.WEST : BlockFace.SOUTH,2));
 		
-					setFrameBlock(teleportLocation.getBlock().getRelative(BlockFace.UP,i).getRelative(!zAxis ? BlockFace.WEST : BlockFace.SOUTH).getLocation(),zAxis,false);
-					setFrameBlock(teleportLocation.getBlock().getRelative(BlockFace.UP,i).getLocation(),zAxis,false);
+					completeFrames.add(new PortalFrame(complete, teleportLocation.getBlock().getRelative(BlockFace.UP,i).getRelative(!zAxis ? BlockFace.WEST : BlockFace.SOUTH).getLocation(),zAxis));
+					completeFrames.add(new PortalFrame(complete, teleportLocation.getBlock().getRelative(BlockFace.UP,i).getLocation(),zAxis));
 				}
+				
+
+				
 				if (added) teleportLocation.add(0,1,0);
 			} else {
 				for (int i=-2;i<3;i++) {
@@ -1082,16 +1082,23 @@ public class CustomPortal {
 						if (i==-2 || i==2 || i2==-2 || i2==2)
 							setBlock(teleportLocation.getBlock().getRelative(BlockFace.EAST, i).getRelative(BlockFace.SOUTH, i2));
 						else
-							setFrameBlock(teleportLocation.getBlock().getRelative(BlockFace.EAST, i).getRelative(BlockFace.SOUTH, i2).getLocation(),false,false);
+							completeFrames.add(new PortalFrame(complete, teleportLocation.getBlock().getRelative(BlockFace.EAST, i).getRelative(BlockFace.SOUTH, i2).getLocation(),false));
 					}
 				}
 				teleportLocation.add(0,-1,0);
 			}
+
+			for (PortalFrame frame : completeFrames) {
+				frame.summon(null);
+			}
+			complete.setFrames(completeFrames);
+			portalClass.addPortal(complete);
 		} else {
 			
 			if (teleportLocation.getBlock().getRelative(BlockFace.DOWN).getType()==Material.WATER || teleportLocation.getBlock().getRelative(BlockFace.DOWN).getType()==Material.LAVA || Dimensions.isAir(teleportLocation.getBlock().getRelative(BlockFace.DOWN).getType())) 
 				setBlock(teleportLocation.getBlock().getRelative(BlockFace.DOWN));
 		}
+
 	}
 
 	public boolean isReturnWorld(Player p, World to) {

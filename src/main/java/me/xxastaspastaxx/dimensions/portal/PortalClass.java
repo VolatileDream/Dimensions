@@ -23,10 +23,10 @@ import com.comphenix.protocol.events.PacketAdapter;
 import com.comphenix.protocol.events.PacketEvent;
 import com.comphenix.protocol.events.PacketListener;
 
-import me.xxastaspastaxx.dimensions.Dimensions;
 import me.xxastaspastaxx.dimensions.Main;
-import me.xxastaspastaxx.dimensions.Messages;
+import me.xxastaspastaxx.dimensions.Utils.Dimensions;
 import me.xxastaspastaxx.dimensions.Utils.DimensionsSettings;
+import me.xxastaspastaxx.dimensions.Utils.Messages;
 import me.xxastaspastaxx.dimensions.fileHandling.HistoryWorlds;
 import me.xxastaspastaxx.dimensions.fileHandling.LocationsFile;
 import me.xxastaspastaxx.dimensions.fileHandling.PortalLocations;
@@ -46,7 +46,7 @@ public class PortalClass {
 	boolean allowNetherPortal = true;
 
 	ArrayList<CustomPortal> portals = new ArrayList<CustomPortal>();
-	HashMap<CustomPortal,ArrayList<PortalFrame>> frames = new HashMap<CustomPortal,ArrayList<PortalFrame>>();
+	ArrayList<CompletePortal> completePortals = new ArrayList<CompletePortal>();
 	
 	Main pl;
 	
@@ -63,34 +63,10 @@ public class PortalClass {
 	}
 	
 	public void setPortalLocations(PortalLocations portalLocations, LocationsFile locationsFile, PortalListeners portalListeners) {
-	  	debug("Loading locations",2);
-	  	HashMap<CustomPortal, HashMap<World, ArrayList<Location>>> locations = portalLocations.getLocations();
-	  	int locs = 0;
-		for (CustomPortal portal : locations.keySet()) {
-        	for (World world : locations.get(portal).keySet()) {
-        		Iterator<Location> locIterator = locations.get(portal).get(world).iterator();
-			    while (locIterator.hasNext()) {
-			    	Location location = locIterator.next();
-			    	try {
-						if (portal.isPortal(location, true, true) != null) {
-								portal.setFrameBlock(location, portal.isZAxis(location), true);
-				        		locs++;
-						} else {
-							locIterator.remove();
-							portalLocations.removeLocation(portal, location);
-						}
-					} catch (NullPointerException e) {
-						locIterator.remove();
-						portalLocations.removeLocation(portal, location);
-						
-					}
-				}
-        	}
-        }
-		debug("Loaded "+locs+"/"+locations.size()+" locations",1);
 
 		this.portalListeners = portalListeners;
 		this.portalLocations = portalLocations;
+		completePortals = portalLocations.getPortals();
 	}
 	
 	public void setPlayerHistories(HistoryWorlds historyWorlds) {
@@ -127,9 +103,6 @@ public class PortalClass {
 					allowNetherPortal = false;
 				}
 			}
-			if (!frames.containsKey(portal)) {
-				frames.put(portal, new ArrayList<PortalFrame>());
-			}
 		}
 
 		if (packetListener!=null) ProtocolLibrary.getProtocolManager().removePacketListener(packetListener);
@@ -140,16 +113,15 @@ public class PortalClass {
 				if (event.getPacketType() == PacketType.Play.Server.MAP_CHUNK) {
 					int x = event.getPacket().getIntegers().read(0);
 					int z = event.getPacket().getIntegers().read(1);
-					for (PortalFrame frame : getFrames()) {
+					for (PortalFrame frame : getAllFrames()) {
 						frame.summon(event.getPlayer(),x,z);
-						
 					}
 				}
 				
 				if (event.getPacketType() == PacketType.Play.Server.UNLOAD_CHUNK) {
 					int x = event.getPacket().getIntegers().read(0);
 					int z = event.getPacket().getIntegers().read(1);
-					for (PortalFrame frame : getFrames()) {
+					for (PortalFrame frame : getAllFrames()) {
 						frame.remove(event.getPlayer(),x,z);
 					}
 				}
@@ -238,14 +210,14 @@ public class PortalClass {
 		return result;
 	}
 
-	public CustomPortal getPortalAtLocation(Location loc) {
+	public CompletePortal getPortalAtLocation(Location loc) {
 		if (loc==null) return null;
 		return portalLocations.getPortal(loc.getBlock().getLocation());
 	}
 	
 	public PortalFrame getFrameAtLocation(Location loc) {
-		for (CustomPortal portal : frames.keySet()) {
-			for (PortalFrame frame : frames.get(portal)) {
+		for (CompletePortal portal : completePortals) {
+			for (PortalFrame frame : portal.getFrames()) {
 				if (frame.getLocation().equals(loc.getBlock().getLocation())) {
 					debug("Check for frame at "+loc+" | Result = true",3);
 					return frame;
@@ -256,33 +228,47 @@ public class PortalClass {
 		return null;
 	}
 	
-	public ArrayList<PortalFrame> getFrames(CustomPortal portal) {
-		return frames.get(portal);
+	public ArrayList<CompletePortal> getCompletePortals() {
+		
+		return completePortals;
 	}
 	
-	public boolean addFrame(CustomPortal portal, PortalFrame frame) {
+	public ArrayList<CompletePortal> getCompletePortals(CustomPortal portal) {
+		
+		ArrayList<CompletePortal> result = new ArrayList<CompletePortal>();
+		
+		for (CompletePortal complete : completePortals) {
+			if (portal.equals(complete.getPortal())) result.add(complete);
+		}
+		
+		return result;
+	}
+	
+	/*public boolean addFrame(CustomPortal portal, PortalFrame frame) {
 		if (frame==null) return false;
 		debug("Added new frame",3);
 		if (frames.get(portal)==null) frames.put(portal, new ArrayList<PortalFrame>());
 		frames.get(portal).add(frame);
 		return true;
-	}
+	}*/
 	
 	public ArrayList<Location> getPortalLocations() {
-		return portalLocations.getAllLocations();
+		return portalLocations.getLocations();
 	}
 	
-	public void addLocation(CustomPortal portal, Location loc) {
-		portalLocations.addLocation(portal, loc);
+	public void addPortal(CompletePortal complete) {
+		portalLocations.addPortal(complete);
 	}
 	
-	public void removeFrame(CustomPortal portal, PortalFrame frame, boolean remove) {
-		if (remove) portalLocations.removeLocation(portal, frame.getLocation().getBlock().getLocation());
-		frames.get(portal).remove(frame);
+	public void removeCompletePortal(CompletePortal complete, boolean remove) {
+		if (remove) {
+			portalLocations.removePortal(complete);
+		}
+		completePortals.remove(complete);
 	}
 	
-	public void removeLocation(CustomPortal portal, Location loc) {
-		portalLocations.removeLocation(portal, loc.getBlock().getLocation());
+	public void removePortal(CustomPortal portal) {
+		portalLocations.removePortal(portal);
 	}
 	
 	public CustomPortal getPortalFromName(String portalName) {
@@ -406,27 +392,51 @@ public class PortalClass {
 		}
 	}
 	
-	public ArrayList<PortalFrame> getFrames() {
-		ArrayList<PortalFrame> result = new ArrayList<PortalFrame>();
-		
-		for (ArrayList<PortalFrame> list : frames.values()) {
-			result.addAll(list);
-		}
-		
-		return result;
-	}
-	
 	public void debug(String msg, int lvl) {
 		if (DimensionsSettings.getDebugLevel()>=lvl)
 		System.out.println("[Dimensions Debugger]" + msg);
 	}
 	
-	public ArrayList<PortalFrame> getNearbyPortalFrames(Location loc, int radius) {
+	public ArrayList<PortalFrame> getAllFrames() {
+		ArrayList<PortalFrame> result = new ArrayList<PortalFrame>();
+		for (CompletePortal complete : completePortals) {
+			result.addAll(complete.getFrames());
+		}
+		
+		return result;
+	}
+	
+	public ArrayList<PortalFrame> getNearbyPortalFrames(CustomPortal portal, Location loc, int radius) {
 		ArrayList<PortalFrame> result = new ArrayList<PortalFrame>();
 		
-		for (PortalFrame frame : getFrames()) {
+		for (PortalFrame frame : getFrames(portal)) {
 			if (!frame.getLocation().getWorld().equals(loc.getWorld())) continue;
 			if (frame.getLocation().distance(loc)<radius) result.add(frame);
+		}
+		
+		return result;
+	}
+	
+	public ArrayList<CompletePortal> getNearbyPortals(Location loc, int radius) {
+		ArrayList<CompletePortal> result = new ArrayList<CompletePortal>();
+		
+		for (CompletePortal complete : completePortals) {
+			PortalFrame frame = complete.getFrames().get(0);
+			if (!frame.getLocation().getWorld().equals(loc.getWorld())) continue;
+			if (frame.getLocation().distance(loc)<radius) result.add(complete);
+		}
+		
+		return result;
+	}
+	
+	public ArrayList<CompletePortal> getNearbyPortals(CustomPortal portal, Location loc, int radius) {
+		ArrayList<CompletePortal> result = new ArrayList<CompletePortal>();
+		
+		for (CompletePortal complete : completePortals) {
+			if (complete.getPortal().equals(portal)) continue;
+			PortalFrame frame = complete.getFrames().get(0);
+			if (!frame.getLocation().getWorld().equals(loc.getWorld())) continue;
+			if (frame.getLocation().distance(loc)<radius) result.add(complete);
 		}
 		
 		return result;
@@ -456,4 +466,35 @@ public class PortalClass {
 	public void save() {
 		Main.getInstance().files.portalFiles.save();
 	}
+
+	public ArrayList<PortalFrame> getFrames(CustomPortal customPortal) {
+		ArrayList<PortalFrame> result = new ArrayList<PortalFrame>();
+		for (CompletePortal complete : getCompletePortals(customPortal)) {
+			for (PortalFrame frame : complete.getFrames()) {
+				result.add(frame);
+			}
+		}
+		
+		return result;
+	}
+
+	public void removePortals(CustomPortal customPortal) {
+		Iterator<CompletePortal> completeIter = completePortals.iterator();
+		while (completeIter.hasNext()) {
+			CompletePortal complete = completeIter.next();
+			if (complete.getPortal().equals(customPortal)) {
+				completeIter.remove();
+			}
+		}
+		
+	}
+
+	public ArrayList<CompletePortal> getPortalsVisibleFromPlayer(Player p) {
+		ArrayList<CompletePortal> res = new ArrayList<CompletePortal>();
+		for (CompletePortal complete : completePortals) {
+			if (complete.getFrames().get(0).isShown(p)) res.add(complete);
+		}
+		return res;
+	}
+
 }

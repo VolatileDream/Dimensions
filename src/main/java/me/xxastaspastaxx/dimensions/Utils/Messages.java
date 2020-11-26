@@ -1,4 +1,4 @@
-package me.xxastaspastaxx.dimensions;
+package me.xxastaspastaxx.dimensions.Utils;
 
 import java.io.File;
 import java.io.IOException;

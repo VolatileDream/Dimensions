@@ -10,6 +10,8 @@ import org.bukkit.plugin.java.JavaPlugin;
 
 import com.sk89q.worldguard.bukkit.WorldGuardPlugin;
 
+import me.xxastaspastaxx.dimensions.Utils.Messages;
+import me.xxastaspastaxx.dimensions.Utils.Metrics;
 import me.xxastaspastaxx.dimensions.commands.DimensionsCommands;
 import me.xxastaspastaxx.dimensions.fileHandling.Files;
 import me.xxastaspastaxx.dimensions.portal.CustomPortal;

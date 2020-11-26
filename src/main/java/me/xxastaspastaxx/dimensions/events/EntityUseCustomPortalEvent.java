@@ -6,7 +6,7 @@ import org.bukkit.event.Cancellable;
 import org.bukkit.event.Event;
 import org.bukkit.event.HandlerList;
 
-import me.xxastaspastaxx.dimensions.portal.CustomPortal;
+import me.xxastaspastaxx.dimensions.portal.CompletePortal;
 
 public class EntityUseCustomPortalEvent extends Event implements Cancellable {
     private static final HandlerList handlers = new HandlerList();
@@ -14,21 +14,21 @@ public class EntityUseCustomPortalEvent extends Event implements Cancellable {
     private boolean cancelled;
     
     Entity entity;
-    Location portalLocation;
-    CustomPortal portal;
+    CompletePortal complete;
     
     boolean buildExitPortal;
     
     boolean forceTP;
     boolean bungee;
-    
+
+    Location tpLoc;
     Location buildLocation;
     boolean zAxis;
     
-    public EntityUseCustomPortalEvent(Entity entity, Location portalLocation, CustomPortal portal, boolean buildExitPortal,boolean forceTP, boolean bungee) {
+    public EntityUseCustomPortalEvent(Entity entity, Location tpLoc, CompletePortal complete, boolean buildExitPortal,boolean forceTP, boolean bungee) {
     	this.entity=entity;
-    	this.portalLocation=portalLocation;
-    	this.portal=portal;
+    	this.tpLoc = tpLoc;
+    	this.complete=complete;
     	this.buildExitPortal = buildExitPortal;
     	this.forceTP = forceTP;
     	this.bungee = bungee;
@@ -38,12 +38,16 @@ public class EntityUseCustomPortalEvent extends Event implements Cancellable {
     	return entity;
     }
     
-    public Location getLocation() {
-    	return portalLocation.clone();
+    public CompletePortal getPortal() {
+    	return complete;
     }
     
-    public void setLocation(Location loc) {
-    	portalLocation = loc.clone();
+    public Location getLocation() {
+    	return tpLoc;
+    }
+    
+    public void setLocation(Location tpLoc) {
+    	this.tpLoc = tpLoc;
     }
     
     public boolean getBuildExitPortal() {
@@ -60,10 +64,6 @@ public class EntityUseCustomPortalEvent extends Event implements Cancellable {
     
     public void setBuildExitPortal(boolean buildExitPortal) {
     	this.buildExitPortal = buildExitPortal;
-    }
-    
-    public CustomPortal getCustomPortal() {
-    	return portal;
     }
     
     public boolean isForcedTeleport() {

@@ -27,10 +27,10 @@ import org.bukkit.event.world.WorldSaveEvent;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
-import me.xxastaspastaxx.dimensions.Dimensions;
 import me.xxastaspastaxx.dimensions.Main;
-import me.xxastaspastaxx.dimensions.Messages;
+import me.xxastaspastaxx.dimensions.Utils.Dimensions;
 import me.xxastaspastaxx.dimensions.Utils.DimensionsSettings;
+import me.xxastaspastaxx.dimensions.Utils.Messages;
 import me.xxastaspastaxx.dimensions.portal.CustomPortal;
 import me.xxastaspastaxx.dimensions.portal.PortalClass;
 import me.xxastaspastaxx.dimensions.portal.PortalFrame;
@@ -106,7 +106,7 @@ public class PortalFiles implements Listener {
 			}
 
 	        this.locationsFile = locationsFile;
-	        this.portalLocations = new PortalLocations(portalClass, locationsFile);
+	        this.portalLocations = new PortalLocations(locationsFile);
 	        portalLocations.convertStrings(locationsFile.getLocations());
 	        portalClass.setPortalLocations(portalLocations, locationsFile,portalListeners);
 	        
@@ -226,7 +226,7 @@ public class PortalFiles implements Listener {
 		GsonBuilder builder = new GsonBuilder(); 
 		Gson gson = builder.create(); 
 		FileWriter writer = new FileWriter("plugins/Dimensions/Portals/portalLocations.json");
-		locationsFile.save(portalLocations.getLocations());
+		locationsFile.save(portalLocations.getPortals());
 		writer.write(gson.toJson(locationsFile));   
 		writer.close(); 
 	}
@@ -269,7 +269,7 @@ public class PortalFiles implements Listener {
 	
 	public void onDisable() {
 		save();
-		for (PortalFrame frame : portalClass.getFrames()) {
+		for (PortalFrame frame : portalClass.getAllFrames()) {
 			frame.remove(null);
 		}
 	}
@@ -306,7 +306,7 @@ public class PortalFiles implements Listener {
 			Dimensions.saveValueAs(Dimensions.getPlayerFile(p, "Hold"), "Hold", true);
 		}
 		
-		for (PortalFrame frame : portalClass.getFrames()) {
+		for (PortalFrame frame : portalClass.getAllFrames()) {
 			frame.remove(p);
 		}
 	}
