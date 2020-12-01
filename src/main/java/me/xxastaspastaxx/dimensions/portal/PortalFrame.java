@@ -1,14 +1,10 @@
 package me.xxastaspastaxx.dimensions.portal;
 
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.ConcurrentModificationException;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map.Entry;
 
-import org.bukkit.Axis;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
@@ -16,8 +12,6 @@ import org.bukkit.Material;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
 import org.bukkit.block.BlockFace;
-import org.bukkit.block.data.BlockData;
-import org.bukkit.block.data.Orientable;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.LivingEntity;
@@ -32,7 +26,6 @@ import com.comphenix.packetwrapper.WrapperPlayServerEntityMetadata;
 import com.comphenix.packetwrapper.WrapperPlayServerEntityTeleport;
 import com.comphenix.packetwrapper.WrapperPlayServerSpawnEntity;
 import com.comphenix.protocol.reflect.FieldAccessException;
-import com.comphenix.protocol.utility.MinecraftReflection;
 import com.comphenix.protocol.wrappers.WrappedDataWatcher;
 
 import me.xxastaspastaxx.dimensions.Utils.DimensionsSettings;
@@ -41,44 +34,31 @@ public class PortalFrame implements Listener {
 	
 	PortalClass pc;
 	
-	private Class<?> blockClass;
-	private Class<?> craftBlockDataClass;
-	private Method getCombinedIdMethod;
-	private Method getStateMethod;
+	/*********************************************************/
 	
-	private int fallingBlockId;
-	
-	private int viewDistance;
-
 	WrapperPlayServerSpawnEntity spawnPacket;
 	WrapperPlayServerEntityTeleport teleportPacket;
 	WrapperPlayServerEntityMetadata metaPacket;
 	WrappedDataWatcher dataWatcher;
 	WrapperPlayServerEntityDestroy destroyPacket;
 	
-	BlockData netherBlockData;
+	/*********************************************************/
 	
-	/***************************************************************************************************************************/
+	private int fallingBlockId;
 	
 	CompletePortal complete;
 	Location loc;
 	Location fixedLoc;
 	int[] chunkPos = new int[2];
-	boolean zAxis;
 	
 	int task;
-	HashMap<Entity,Long> timer = new HashMap<Entity,Long>();
-	ArrayList<Entity> hold = new ArrayList<Entity>();
 
 	boolean destroyed = false;
 	boolean enabled = false;
-	boolean isEntity = false;
 	
 	int task2;
 	
 	long startLife;
-	
-	HashMap<Object, Object> tags = new HashMap<Object, Object>();
 	
 	public PortalFrame(CompletePortal complete, Location location, boolean zAxis) {
 		this.complete = complete;
@@ -86,52 +66,20 @@ public class PortalFrame implements Listener {
 		this.fixedLoc = loc.clone().add(0.5,0.5,0.5);
 		this.chunkPos[0] = loc.getChunk().getX();
 		this.chunkPos[1] = loc.getChunk().getZ();
-		this.zAxis = zAxis;
 		this.pc = complete.getPortal().portalClass;
 		
-		viewDistance = Bukkit.getViewDistance();
-		
 		startLife = System.currentTimeMillis();
-		
-		if (complete.getPortal().getFrame().isSolid() || complete.getPortal().getFrame()==Material.NETHER_PORTAL) {
-			try {
-				blockClass = MinecraftReflection.getBlockClass();
-				craftBlockDataClass = MinecraftReflection.getCraftBukkitClass("block.data.CraftBlockData");
-				getCombinedIdMethod = blockClass.getMethod("getCombinedId",MinecraftReflection.getIBlockDataClass());
-				getStateMethod = craftBlockDataClass.getMethod("getState");
-				
-			} catch (NoSuchMethodException | IllegalArgumentException e) {
-				e.printStackTrace();
-				return;
-			}
-			
-			fallingBlockId =  (int) (Math.random() * Integer.MAX_VALUE);
-			
-			isEntity = true;
-		}
-		
-		Orientable orientable = (Orientable) Material.NETHER_PORTAL.createBlockData();
-		orientable.setAxis(zAxis ? Axis.Z : Axis.X);
-		netherBlockData = orientable;
-		
-		reload();
 
+		fallingBlockId =  (int) (Math.random() * Integer.MAX_VALUE);
+		
 		startTask();
 		
 		Bukkit.getServer().getPluginManager().registerEvents(this, pc.pl);
 	}
 	
-	public void reload() {
+	public void reload(int combinedId) {
 		
-		if (!isEntity) return;
-		
-		int combinedId = 0;
-		try {
-			Object nmsBlockData = getStateMethod.invoke(complete.getPortal().getFrameBlockData(zAxis));
-			combinedId = (int) getCombinedIdMethod.invoke(blockClass,nmsBlockData);
-		} catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException e1) {
-			e1.printStackTrace();
-		}
+		if (!complete.isEntity) return;
 		
 		spawnPacket = new WrapperPlayServerSpawnEntity();
 
@@ -178,10 +126,6 @@ public class PortalFrame implements Listener {
 	public int getFallingBlockID() {
 		return fallingBlockId;
 	}
-	
-	public boolean isZAxis() {
-		return zAxis;
-	}
 
 	ArrayList<Player> shown = new ArrayList<Player>();
 	
@@ -199,53 +143,53 @@ public class PortalFrame implements Listener {
 				
 
 				loc.getBlock().setType(Material.AIR);
-				if (isEntity) {
+				if (complete.isEntity) {
 					for (Player p : shown) {
 						p.sendBlockChange(loc, Material.AIR.createBlockData());
 					}
 				} else {
 					for (Player p : shown) {
-						p.sendBlockChange(loc,complete.getPortal().getFrameBlockData(zAxis));
+						p.sendBlockChange(loc,complete.getPortal().getFrameBlockData(complete.zAxis));
 					}
 				}
 				
 				for (Entity en : loc.getWorld().getNearbyEntities(fixedLoc, 0.5,0.5,0.5)) {
 					if (!(en instanceof Entity)) continue;
 					if ((!DimensionsSettings.enableMobsTeleportation() && !(en instanceof Player)) || (!DimensionsSettings.enableEntitiesTeleportation() && !(en instanceof LivingEntity))) continue;
-					if (en instanceof Player && DimensionsSettings.enableNetherPortalEffect()) ((Player) en).sendBlockChange(loc, netherBlockData);
-					if (timer.containsKey(en) || pc.isOnHold(en)) continue;
+					if (en instanceof Player && DimensionsSettings.enableNetherPortalEffect()) ((Player) en).sendBlockChange(loc, complete.netherBlockData);
+					if (complete.getTimer().containsKey(en) || pc.isOnHold(en)) continue;
 					if (en.getLocation().getBlock().equals(loc.getBlock())) {
 						int extra = 0;
 						if (en instanceof Player && (((Player) en).getGameMode()==GameMode.CREATIVE || ((Player) en).getGameMode()==GameMode.SPECTATOR)) extra = DimensionsSettings.getTeleportDelay()*1000;
-						timer.put(en, System.currentTimeMillis()-extra);
-						hold.add(en);
-						pc.addToHold(en);
+						complete.getTimer().put(en, System.currentTimeMillis()-extra);
+						complete.addToHold(en);
 					}
 				}
 				
-			    Iterator<Entry<Entity,Long>> timerIterator = timer.entrySet().iterator();
+			    Iterator<Entry<Entity,Long>> timerIterator = complete.getTimer().entrySet().iterator();
 			    while (timerIterator.hasNext()) {
 			    	Entry<Entity,Long> entry = timerIterator.next();
 			    	Entity en = entry.getKey();
 			    	Location eloc = en.getLocation();
-			    	if ((eloc.getBlockX()!=loc.getBlockX() || eloc.getBlockY()!=loc.getBlockY() || eloc.getBlockZ()!=loc.getBlockZ()) && (!pc.isPortalAtLocation(en.getLocation()) ||(pc.isPortalAtLocation(en.getLocation()) && !pc.getPortalAtLocation(en.getLocation()).equals(complete.getPortal())))) {
+			    	if ((eloc.getBlockX()!=loc.getBlockX() || eloc.getBlockY()!=loc.getBlockY() || eloc.getBlockZ()!=loc.getBlockZ()) && (!pc.isPortalAtLocation(en.getLocation()) || (pc.isPortalAtLocation(en.getLocation()) && !pc.getPortalAtLocation(en.getLocation()).equals(complete)))) {
 			    		timerIterator.remove();
-					} else if (!timer.containsKey(en)) {
+					} else if (!complete.getTimer().containsKey(en)) {
 						try {
 							timerIterator.remove();
-							hold.remove(en);
+							complete.hold.remove(en);
 						} catch (ConcurrentModificationException e) { }
-					} else if (((System.currentTimeMillis()-timer.get(en))/1000)>=DimensionsSettings.getTeleportDelay()) {
+					} else if (((System.currentTimeMillis()-complete.getTimer().get(en))/1000)>=DimensionsSettings.getTeleportDelay()) {
 						if (complete.getPortal().usePortal(complete, en, false, en.getWorld(), false)) {
 							try {
-								timerIterator.remove();
-								hold.remove(en);
+								complete.hold.remove(en);
 							} catch (ConcurrentModificationException e) { }
 						}
+
+						timerIterator.remove();
 					}
 			    }
 			    
-			    Iterator<Entity> holdIterator = hold.iterator();
+			    Iterator<Entity> holdIterator = complete.hold.iterator();
 			    while (holdIterator.hasNext()) {
 			    	Entity en = holdIterator.next();
 					Location eloc = en.getLocation();
@@ -260,7 +204,7 @@ public class PortalFrame implements Listener {
 					complete.getPortal().spawnParticles(loc);
 				}
 				
-				if (isEntity) {
+				if (complete.isEntity) {
 					for (Player p : shown) {
 						metaPacket.sendPacket(p);
 						teleportPacket.sendPacket(p);
@@ -275,16 +219,11 @@ public class PortalFrame implements Listener {
 				public void run() {
 					EntityType type = complete.getPortal().getEntitySpawn();
 					if (type!=null) {
-						hold.add(loc.getWorld().spawnEntity(loc, type));
+						complete.hold.add(loc.getWorld().spawnEntity(loc, type));
 					}
 				}
 			}, complete.getPortal().getEntityDelay(), complete.getPortal().getEntityDelay());
 		}
-	}
-	
-	public void addToHold(Entity en) {
-		hold.add(en);
-		pc.addToHold(en);
 	}
 	
 	public void summon(Player p) {
@@ -292,12 +231,12 @@ public class PortalFrame implements Listener {
 
 		if (p!=null && (shown.contains(p) || !p.getWorld().equals(loc.getWorld()))) return;
 		if (p==null) {
-			for (Entity player : loc.getWorld().getNearbyEntities(fixedLoc, 16*viewDistance, 255, 16*viewDistance, (player) -> player instanceof Player)) {
+			for (Entity player : loc.getWorld().getNearbyEntities(fixedLoc, 16*complete.viewDistance, 255, 16*complete.viewDistance, (player) -> player instanceof Player)) {
 				summon((Player) player);
 			}
 			return;
 		}
-		if (isEntity) {
+		if (complete.isEntity) {
 			spawnPacket.sendPacket(p);
 			teleportPacket.sendPacket(p);
 			metaPacket.sendPacket(p);
@@ -306,8 +245,8 @@ public class PortalFrame implements Listener {
 		
 		if (!shown.isEmpty() && (!destroyed && !enabled)) {
 			startTask();
-			if (!isEntity) {
-				p.sendBlockChange(loc, complete.getPortal().getFrameBlockData(zAxis));
+			if (!complete.isEntity) {
+				p.sendBlockChange(loc, complete.getPortal().getFrameBlockData(complete.zAxis));
 			}
 		}
 	}
@@ -333,7 +272,7 @@ public class PortalFrame implements Listener {
 			}
 			return;
 		}
-		if (isEntity) {
+		if (complete.isEntity) {
 			destroyPacket.sendPacket(p);
 		}
 		shown.remove(p);
@@ -369,14 +308,9 @@ public class PortalFrame implements Listener {
 
 		Bukkit.getScheduler().cancelTask(task);
 		Bukkit.getScheduler().cancelTask(task2);
-		timer.clear();
-		for (Entity en : hold) {
-			pc.removeFromHold(en);
-		}
-		hold.clear();
 		
 		if (remove) {
-			loc.getWorld().spawnParticle(Particle.BLOCK_CRACK, fixedLoc, 10, complete.getPortal().getFrameBlockData(zAxis));
+			loc.getWorld().spawnParticle(Particle.BLOCK_CRACK, fixedLoc, 10, complete.getPortal().getFrameBlockData(complete.zAxis));
 			loc.getWorld().playSound(fixedLoc, Sound.BLOCK_GLASS_BREAK, 1.0F, 8.0F);
 			loc.getBlock().setBlockData(Material.AIR.createBlockData());
 		}
@@ -387,13 +321,5 @@ public class PortalFrame implements Listener {
 
 	public boolean isShown(Player p) {
 		return shown.contains(p);
-	}
-	
-	public Object getTag(Object key) {
-		return tags.get(key);
-	}
-	
-	public void setTag(Object key, Object value) {
-		tags.put(key, value);
 	}
 }

@@ -47,35 +47,35 @@ public class CustomPortal {
 	
 	String name;
 	
-	int maxRadius;
+	public int maxRadius;
 	
-	boolean enabled;
-	String displayName;
+	public boolean enabled;
+	public String displayName;
 	
-	boolean horizontal;
-	Material material;
-	String face;
-	Material frame;
-	Material lighter;
+	public boolean horizontal;
+	public Material material;
+	public String face;
+	public Material frame;
+	public Material lighter;
 
-	World world;
-	int worldHeight;
-	String ratio;
+	public World world;
+	public int worldHeight;
+	public String ratio;
 	
-	int minPortalWidth;
-	int minPortalHeight;
+	public int minPortalWidth;
+	public int minPortalHeight;
 	
-	HashMap<EntityType,EntityType> entityTransformation;
+	public HashMap<EntityType,EntityType> entityTransformation;
 	
-	int[] spawningDelay;
-	HashMap<EntityType,Integer> entitySpawning;
+	public int[] spawningDelay;
+	public HashMap<EntityType,Integer> entitySpawning;
 	
-	boolean buildExitPortal;
-	boolean spawnOnAir;
+	public boolean buildExitPortal;
+	public boolean spawnOnAir;
 	
-	ArrayList<World> disabledWorlds;
+	public ArrayList<World> disabledWorlds;
 	
-	String particlesColor;
+	public String particlesColor;
 	
 	public CustomPortal(PortalClass portalClass, String name, boolean enabled, String displayName, boolean horizontal, Material material, String face,
 			Material frame, Material lighter, World world, int worldHeight, String ratio, int minPortalWidth, int minPortalHeight,
@@ -142,10 +142,10 @@ public class CustomPortal {
 			HashMap<EntityType,EntityType> entityTransformation, int[] spawningDelay, HashMap<EntityType,Integer> entitySpawning,
 			boolean buildExitPortal, boolean spawnOnAir, ArrayList<World> disabledWorlds, String particlesColor) {
 		
-		ArrayList<PortalFrame> frames = portalClass.getFrames(this);
-		if (frames==null) return;
-		for (PortalFrame portalFrame : frames) {
-			portalFrame.remove(null);
+		ArrayList<CompletePortal> comps = portalClass.getCompletePortals(this);
+		if (comps==null) return;
+		for (CompletePortal port : comps) {
+			port.remove();
 		}
 		
 		this.name = name;
@@ -169,15 +169,13 @@ public class CustomPortal {
 		this.disabledWorlds = disabledWorlds;
 		this.particlesColor = particlesColor;
 		
-		Iterator<PortalFrame> framesIter = frames.iterator();
-		while (framesIter.hasNext()) {
-			PortalFrame frame1 = framesIter.next();
+		Iterator<CompletePortal> compsIter = comps.iterator();
+		while (compsIter.hasNext()) {
+			CompletePortal frame1 = compsIter.next();
 			frame1.reload();
 			List<Object> portal = isPortal(frame1.getLocation(), true, true);
-			if (portal!=null) {
-				frame1.summon(null);
-			} else {
-				framesIter.remove();
+			if (portal==null) {
+				compsIter.remove();
 				frame1.destroy(true);
 			}
 		}
@@ -738,7 +736,7 @@ public class CustomPortal {
 	//Find the location that the player must go when entering a portal
 	public Location calculateTeleportLocation(Entity p, EntityUseCustomPortalEvent event) {
 		
-		Location loc = event.getPortal().getLocation();
+		Location loc = event.getLocation();
 		Location teleportLocation;
 
 		if (getWorldHeight()>0) loc.setY(loc.getY()/(256/getWorldHeight()));
@@ -947,7 +945,9 @@ public class CustomPortal {
 			Location startLocation = event.getLocation();
 			if (startLocation.getWorld().equals(getWorld()) && startLocation.getY()>getWorldHeight()) startLocation.setY(getWorldHeight()-5);
 			event.setLocation(startLocation);
-			Location teleportLocation = complete==null?calculateTeleportLocation(p, event):complete.getLinkedLocation().clone();
+			Location teleportLocation = null;
+			if (complete!=null && !event.isForceCalculate()) teleportLocation = complete.getLinkedLocation();
+			if (teleportLocation==null) teleportLocation = calculateTeleportLocation(p, event);
 			teleportLocation.setDirection(p.getLocation().getDirection());
 			EntityTeleportCustomPortalEvent tpEvent = new EntityTeleportCustomPortalEvent(event,teleportLocation,p.getLocation());
 			tpEvent.setCancelled(teleportLocation==null || event.isForcedTeleport() || getDisabledWorlds().contains(teleportLocation.getWorld()));
@@ -955,13 +955,13 @@ public class CustomPortal {
 			if (!tpEvent.isCancelled()) {
 				if (event.getBuildLocation()!=null) buildPortal(event);
 				teleportLocation = teleportLocation.add(0,(event.getBuildLocation()!=null ? 1:0),(event.getBuildLocation()!=null && event.getZaxis()?0.5:0));
-				PortalFrame frame = portalClass.getFrameAtLocation(teleportLocation);
-				if (frame!=null) {
-					frame.addToHold(p);
+				
+				CompletePortal compl = portalClass.getPortalAtLocation(teleportLocation);
+				if (compl!=null) {
+					compl.addToHold(p);
 				} else {
 					portalClass.removeFromHold(p);
 				}
-				
 				if (!(p instanceof Player)) {
 					EntityType type = getEntityTransformation(p.getType());
 					if (type!=null) {
@@ -978,7 +978,7 @@ public class CustomPortal {
 							entity.setHealth(entity.getHealth());
 							entity.setTicksLived(p.getTicksLived());
 							
-							frame.addToHold(entity);
+							compl.addToHold(entity);
 							
 							p.remove();
 						} else {
@@ -987,7 +987,7 @@ public class CustomPortal {
 							entity.setFireTicks(p.getFireTicks());
 							entity.setTicksLived(p.getTicksLived());
 							
-							frame.addToHold(entity);
+							compl.addToHold(entity);
 							
 							p.remove();
 							

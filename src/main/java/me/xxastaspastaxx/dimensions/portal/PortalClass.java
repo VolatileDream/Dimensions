@@ -147,8 +147,8 @@ public class PortalClass {
 		return portals;
 	}
 	
-	public ArrayList<Location> getPortalsInWorld(CustomPortal portal, World world) {
-		return portalLocations.getLocations(portal, world);
+	public ArrayList<CompletePortal> getPortalsInWorld(CustomPortal portal, World world) {
+		return portalLocations.getPortals(portal, world);
 	}
 	
 	//Check if any of the saved portals can be lit in this location

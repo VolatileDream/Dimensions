@@ -46,7 +46,7 @@ public class Dimensions {
 		return portalClass.lightPortal(loc, cause, entity, lighter);
 	}
 	
-	public static ArrayList<Location> getPortalsInWorld(CustomPortal portal, World world) {
+	public static ArrayList<CompletePortal> getPortalsInWorld(CustomPortal portal, World world) {
 		return portalClass.getPortalsInWorld(portal,world);
 	}
 	

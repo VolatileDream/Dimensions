@@ -31,6 +31,7 @@ import me.xxastaspastaxx.dimensions.Main;
 import me.xxastaspastaxx.dimensions.Utils.Dimensions;
 import me.xxastaspastaxx.dimensions.Utils.DimensionsSettings;
 import me.xxastaspastaxx.dimensions.Utils.Messages;
+import me.xxastaspastaxx.dimensions.portal.CompletePortal;
 import me.xxastaspastaxx.dimensions.portal.CustomPortal;
 import me.xxastaspastaxx.dimensions.portal.PortalClass;
 import me.xxastaspastaxx.dimensions.portal.PortalFrame;
@@ -289,9 +290,9 @@ public class PortalFiles implements Listener {
 		
 		Object hold = Dimensions.getValue(Dimensions.getPlayerFile(p, "Hold"), "Hold");
 		if (hold!=null && (boolean) hold) {
-			PortalFrame frame = portalClass.getFrameAtLocation(p.getLocation());
-			if (frame!=null) {
-				frame.addToHold(p);
+			CompletePortal compl = portalClass.getPortalAtLocation(p.getLocation());
+			if (compl!=null) {
+				compl.addToHold(p);
 			}
 			Dimensions.saveValueAs(Dimensions.getPlayerFile(p, "Hold"), "Hold", false);
 		}

@@ -57,6 +57,14 @@ public class PortalLocations {
 		}
 		return allLocations;
 	}
+	
+	public ArrayList<CompletePortal> getPortals(CustomPortal portal, World world) {
+		ArrayList<CompletePortal> allLocations = new ArrayList<CompletePortal>();
+		for (CompletePortal complete : locations) {
+			if (complete.getPortal().equals(portal) && complete.getLocation().getWorld().equals(world)) allLocations.add(complete);
+		}
+		return allLocations;
+	}
 	   
 	public void setLocations(ArrayList<CompletePortal> locations) { 
 		this.locations = locations; 
