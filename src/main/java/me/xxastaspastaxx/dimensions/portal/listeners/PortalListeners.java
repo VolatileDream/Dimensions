@@ -21,8 +21,8 @@ import org.bukkit.event.block.BlockBurnEvent;
 import org.bukkit.event.block.BlockFadeEvent;
 import org.bukkit.event.block.BlockFromToEvent;
 import org.bukkit.event.block.BlockGrowEvent;
-import org.bukkit.event.block.BlockPhysicsEvent;
 import org.bukkit.event.block.BlockIgniteEvent.IgniteCause;
+import org.bukkit.event.block.BlockPhysicsEvent;
 import org.bukkit.event.block.BlockPistonExtendEvent;
 import org.bukkit.event.block.BlockPistonRetractEvent;
 import org.bukkit.event.block.BlockRedstoneEvent;
@@ -217,7 +217,7 @@ public class PortalListeners implements Listener {
 	@EventHandler(ignoreCancelled = true)
 	public void onBlockChange(BlockPistonRetractEvent e) {
 		for (Block block : e.getBlocks()) {
-			e.setCancelled(onBlockChange(block,null,DestroyCause.PISTON));
+			onBlockChange(block,null,DestroyCause.PISTON);
 		}
 	}
 	
@@ -228,60 +228,66 @@ public class PortalListeners implements Listener {
 	
 	@EventHandler(ignoreCancelled = true)
 	public void onBlockChange(CauldronLevelChangeEvent e) {
-		e.setCancelled(onBlockChange(e.getBlock(),null,DestroyCause.BLOCK_PHYSICS));
+		onBlockChange(e.getBlock(),null,DestroyCause.BLOCK_PHYSICS);
 	}
 	
 	@EventHandler(ignoreCancelled = true)
 	public void onBlockChange(FluidLevelChangeEvent e) {
-		e.setCancelled(onBlockChange(e.getBlock(),null,DestroyCause.BLOCK_PHYSICS));
+		onBlockChange(e.getBlock(),null,DestroyCause.BLOCK_PHYSICS);
 	}
 	
 	@EventHandler(ignoreCancelled = true)
 	public void onBlockChange(FurnaceBurnEvent e) {
-		e.setCancelled(onBlockChange(e.getBlock(),null,DestroyCause.BLOCK_PHYSICS));
+		onBlockChange(e.getBlock(),null,DestroyCause.BLOCK_PHYSICS);
 	}
 	
 	@EventHandler(ignoreCancelled = true)
 	public void onBlockChange(LeavesDecayEvent e) {
-		e.setCancelled(onBlockChange(e.getBlock(),null,DestroyCause.BLOCK_PHYSICS));
+		onBlockChange(e.getBlock(),null,DestroyCause.BLOCK_PHYSICS);
 	}
 	
 	@EventHandler(ignoreCancelled = true)
 	public void onBlockChange(MoistureChangeEvent e) {
-		e.setCancelled(onBlockChange(e.getBlock(),null,DestroyCause.BLOCK_PHYSICS));
+		onBlockChange(e.getBlock(),null,DestroyCause.BLOCK_PHYSICS);
 	}
 	
 	@EventHandler(ignoreCancelled = true)
 	public void onBlockChange(SpongeAbsorbEvent e) {
-		e.setCancelled(onBlockChange(e.getBlock(),null,DestroyCause.BLOCK_PHYSICS));
+		onBlockChange(e.getBlock(),null,DestroyCause.BLOCK_PHYSICS);
 	}
 	
 	@EventHandler(ignoreCancelled = true)
 	public void onBlockChange(BlockBreakEvent e) {
-		e.setCancelled(onBlockChange(e.getBlock(),e.getPlayer(),DestroyCause.PLAYER));
+		onBlockChange(e.getBlock(),e.getPlayer(),DestroyCause.PLAYER);
 	}
 	
 	@EventHandler(ignoreCancelled = true)
 	public void onBlockChange(BlockPhysicsEvent e) {
-		e.setCancelled(onBlockChange(e.getBlock(),null,DestroyCause.BLOCK_PHYSICS));
+		onBlockChange(e.getBlock(),null,DestroyCause.BLOCK_PHYSICS);
 	}
 	
 	//BLOCK CHANGE EVENT ^^^^^
 	
-	public boolean onBlockChange(Block block, Entity ent, DestroyCause cause) {
+	public void onBlockChange(Block block, Entity ent, DestroyCause cause) {
 		
-		if (!portalClass.getBlocks().contains(block.getType())) return false;
+		if (!portalClass.getBlocks().contains(block.getType())) return;
 		
-		boolean destroyed = false;
-        for (BlockFace face : new BlockFace[]{BlockFace.WEST, BlockFace.EAST, BlockFace.NORTH, BlockFace.SOUTH, BlockFace.DOWN, BlockFace.UP})
-        {
-        	Block relative = block.getRelative(face);
-        	CompletePortal portal = portalClass.getPortalAtLocation(relative.getLocation());
-        	if (portal!=null) {
-            	destroyed = !portal.getPortal().destroy(portal,cause, ent);
-        	}
-        }
-        return destroyed;
+		Bukkit.getScheduler().scheduleSyncDelayedTask(portalClass.getPlugin(), new Runnable() {
+			
+			@Override
+			public void run() {
+		        for (BlockFace face : new BlockFace[]{BlockFace.WEST, BlockFace.EAST, BlockFace.NORTH, BlockFace.SOUTH, BlockFace.DOWN, BlockFace.UP})
+		        {
+		        	Block relative = block.getRelative(face);
+		        	CompletePortal portal = portalClass.getPortalAtLocation(relative.getLocation());
+		        	if (portal!=null) {
+		            	if (portal.getPortal().isPortal(portal.getLocation(), true, true)==null) {
+		            		portal.destroy(true);
+		            	}
+		        	}
+		        }
+			}
+		},1);
 	}
 	
 	@EventHandler(ignoreCancelled = true)

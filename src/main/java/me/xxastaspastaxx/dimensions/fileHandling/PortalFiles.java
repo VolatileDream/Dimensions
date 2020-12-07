@@ -1,12 +1,7 @@
 package me.xxastaspastaxx.dimensions.fileHandling;
 
-import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileReader;
-import java.io.FileWriter;
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -24,9 +19,6 @@ import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.world.WorldSaveEvent;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-
 import me.xxastaspastaxx.dimensions.Main;
 import me.xxastaspastaxx.dimensions.Utils.Dimensions;
 import me.xxastaspastaxx.dimensions.Utils.DimensionsSettings;
@@ -41,12 +33,12 @@ public class PortalFiles implements Listener {
 
 	PortalClass portalClass;
 	PortalListeners portalListeners;
-
-	PortalLocations portalLocations;
-	LocationsFile locationsFile;
 	
-	HistoryWorlds historyWorlds;
-	HistoryFile historyFile;
+	PortalLocations portalLocations;
+
+	PlayerHistories playerHistories;
+	
+	PlayerData playerData;
 	
   	public static ArrayList<CustomPortal> createdPortals = new ArrayList<CustomPortal>();
   	public static ArrayList<Material> lighters = new ArrayList<Material>();
@@ -98,34 +90,16 @@ public class PortalFiles implements Listener {
 		
 		portalListeners = new PortalListeners(pl, portalClass);
 		
-		try {
-			writeJSONLocations(false);
-			LocationsFile locationsFile = readJSONLocations();
-			while (locationsFile==null) {
-				writeJSONLocations(true);
-				locationsFile = readJSONLocations();
-			}
+		//TODO
+		portalLocations = new PortalLocations();
+		portalClass.setPortalLocations(portalLocations, portalListeners);
 
-	        this.locationsFile = locationsFile;
-	        this.portalLocations = new PortalLocations(locationsFile);
-	        portalLocations.convertStrings(locationsFile.getLocations());
-	        portalClass.setPortalLocations(portalLocations, locationsFile,portalListeners);
-	        
-	        
-			writeJSONHistories(false);
-			HistoryFile historyFile = readJSONHistories();
-			while (historyFile==null) {
-				writeJSONHistories(true);
-				historyFile = readJSONHistories();
-			}
+		playerHistories = new PlayerHistories(portalClass);
+        portalClass.setPlayerHistories(playerHistories);
+        
+		playerData = new PlayerData(portalClass);
+        portalClass.setPlayerData(playerData);
 
-	        this.historyFile = historyFile;
-	        this.historyWorlds = new HistoryWorlds(portalClass, historyFile);
-	        historyWorlds.convertStrings(historyFile.getHistories());
-	        portalClass.setPlayerHistories(historyWorlds);
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
 
 	    Bukkit.getServer().getPluginManager().registerEvents(this, pl);
 	}
@@ -181,85 +155,6 @@ public class PortalFiles implements Listener {
 		}
 	}
 	
-	private void writeJSONLocations(boolean recreate) {
-		try {
-			File file = new File("plugins/Dimensions/Portals/portalLocations.json");
-			if (!file.getParentFile().exists()) {
-				file.getParentFile().mkdirs();
-			}
-			if (!file.exists() || recreate) {
-				FileWriter fw = new FileWriter(file);
-			    fw.write("{}");
-			    fw.flush();
-			    fw.close();
-			}
-		} catch (FileNotFoundException e) {
-			e.printStackTrace();
-		} catch (UnsupportedEncodingException e) {
-			e.printStackTrace();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-	}
-	
-	private void writeJSONHistories(boolean recreate) {
-		try {
-			File file = new File("plugins/Dimensions/PlayerData/playerHistories.json");
-			if (!file.getParentFile().exists()) {
-				file.getParentFile().mkdirs();
-			}
-			if (!file.exists() || recreate) {
-				FileWriter fw = new FileWriter(file);
-			    fw.write("{}");
-			    fw.flush();
-			    fw.close();
-			}
-		} catch (FileNotFoundException e) {
-			e.printStackTrace();
-		} catch (UnsupportedEncodingException e) {
-			e.printStackTrace();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-	}
-	
-	private void writeJSONLocations(LocationsFile locationsFile) throws IOException {
-		GsonBuilder builder = new GsonBuilder(); 
-		Gson gson = builder.create(); 
-		FileWriter writer = new FileWriter("plugins/Dimensions/Portals/portalLocations.json");
-		locationsFile.save(portalLocations.getPortals());
-		writer.write(gson.toJson(locationsFile));   
-		writer.close(); 
-	}
-	
-	private void writeJSONHistories(HistoryFile historyFile) throws IOException {
-		
-		GsonBuilder builder = new GsonBuilder(); 
-		Gson gson = builder.create(); 
-		FileWriter writer = new FileWriter("plugins/Dimensions/PlayerData/playerHistories.json");
-		historyWorlds.save();
-		writer.write(gson.toJson(historyFile));   
-		writer.close(); 
-	}
-	   
-	private LocationsFile readJSONLocations() throws FileNotFoundException { 
-		GsonBuilder builder = new GsonBuilder(); 
-		Gson gson = builder.create(); 
-		BufferedReader bufferedReader = new BufferedReader(new FileReader("plugins/Dimensions/Portals/portalLocations.json"));   
-
-		LocationsFile locationsFile = gson.fromJson(bufferedReader, LocationsFile.class); 
-		return locationsFile; 
-	}
-	
-	private HistoryFile readJSONHistories() throws FileNotFoundException { 
-		GsonBuilder builder = new GsonBuilder(); 
-		Gson gson = builder.create(); 
-		BufferedReader bufferedReader = new BufferedReader(new FileReader("plugins/Dimensions/PlayerData/playerHistories.json"));   
-
-		HistoryFile historyFile = gson.fromJson(bufferedReader, HistoryFile.class); 
-		return historyFile; 
-	}
-	
 	public PortalClass getPortalClass() {
 		return portalClass;
 	}
@@ -276,25 +171,22 @@ public class PortalFiles implements Listener {
 	}
 	
 	public void save() {
-		try {
-			writeJSONLocations(locationsFile);
-			writeJSONHistories(historyFile);
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
+		portalLocations.save();
+		playerHistories.save();
+		playerData.save();
 	}
 	
 	@EventHandler
 	public void onJoin(PlayerJoinEvent e) {
 		Player p = e.getPlayer();
 		
-		Object hold = Dimensions.getValue(Dimensions.getPlayerFile(p, "Hold"), "Hold");
+		Object hold = playerData.getData(p.getUniqueId(), "Hold");
 		if (hold!=null && (boolean) hold) {
 			CompletePortal compl = portalClass.getPortalAtLocation(p.getLocation());
 			if (compl!=null) {
 				compl.addToHold(p);
 			}
-			Dimensions.saveValueAs(Dimensions.getPlayerFile(p, "Hold"), "Hold", false);
+			playerData.setData(p.getUniqueId(), "Hold", false);
 		}
 	}
 	
@@ -304,7 +196,7 @@ public class PortalFiles implements Listener {
 		Player p = e.getPlayer();
 
 		if (portalClass.isOnHold(p)) {
-			Dimensions.saveValueAs(Dimensions.getPlayerFile(p, "Hold"), "Hold", true);
+			playerData.setData(p.getUniqueId(), "Hold", true);
 		}
 		
 		for (PortalFrame frame : portalClass.getAllFrames()) {
@@ -312,13 +204,14 @@ public class PortalFiles implements Listener {
 		}
 	}
 	
+	
+	long lastSave = 0;
 	@EventHandler(ignoreCancelled = true)
 	public void onSave(WorldSaveEvent e) {
-		try {
-			writeJSONLocations(locationsFile);
-			writeJSONHistories(historyFile);
-		} catch (IOException ex) {
-			ex.printStackTrace();
+		if ((System.currentTimeMillis()-lastSave)/1000>=5) {
+			lastSave = System.currentTimeMillis();
+			portalClass.debug("Saved Dimensions portal locations and player histories", 1);
+			save();
 		}
 	}
 
@@ -369,12 +262,15 @@ public class PortalFiles implements Listener {
 				if (DimensionsSettings.isGenerateWorlds()) {
 					world = Bukkit.getServer().createWorld(new WorldCreator(worldName));
 				} else {
+					Dimensions.debug("Disabling portal: "+name, 0);
+					Dimensions.debug("Reason: There is no world "+worldName+" and \"GenerateNewWorlds\" is set to \"false\"", 0);
+					enabled = false;
 					continue;
 				}
 			}
 			if (world.equals(DimensionsSettings.getDefaultWorld())) {
-				System.out.println("Disabling portal: "+name);
-				System.out.println("Reason: There cannot be a portal that leads to the default world");
+				Dimensions.debug("Disabling portal: "+name, 0);
+				Dimensions.debug("Reason: There cannot be a portal that leads to the default world", 0);
 				enabled = false;
 				continue;
 			}

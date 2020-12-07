@@ -1,8 +1,8 @@
 package me.xxastaspastaxx.dimensions.Utils;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.ArrayList;
+import java.util.UUID;
 
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -107,51 +107,16 @@ public class Dimensions {
 		return new File("plugins/Dimensions/Portals/"+portal.getName()+".yml");
 	}
 	
-	public static File getPlayerFile(Player p, String path) {
-		File playerDataDirectory = new File("plugins/Dimensions/PlayerData/");
-		File playerFileDirectory = new File("plugins/Dimensions/PlayerData/"+p.getName()+"/");
-		File file = new File("plugins/Dimensions/PlayerData/"+p.getName()+"/"+path+".yml");
-		
-		if (!playerDataDirectory.exists()) {
-			playerDataDirectory.mkdir();
-		}
-		if (!playerFileDirectory.exists()) {
-			playerFileDirectory.mkdir();
-		}
-		if (!file.exists()) {
-			try {
-				file.createNewFile();
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
-		}
-		
-		
-		if (!file.exists()) {
-			try {
-				file.createNewFile();
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
-		}
-		return file;
+	public static YamlConfiguration getPortalConfiguration(CustomPortal portal) {
+		return YamlConfiguration.loadConfiguration(getPortalFile(portal));
 	}
 	
-	public static void saveValueAs(File file, String data, Object value) {
-	  	YamlConfiguration config = YamlConfiguration.loadConfiguration(file);
-	  	
-	  	config.set(data, value);
-	  	
-	  	try {
-			config.save(file);
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
+	public static void saveValueAs(UUID uuid, String data, Object value) {
+		portalClass.setData(uuid, data, value);
 	}
 	
-	public static Object getValue(File file, String data) {
-	  	YamlConfiguration config = YamlConfiguration.loadConfiguration(file);
-	  	return config.get(data);
+	public static Object getValue(UUID uuid, String data) {
+	  	return portalClass.getData(uuid, data);
 	}
 	
 	public static int getRandom(int min, int max) {

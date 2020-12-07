@@ -25,8 +25,6 @@ public class EntityUseCustomPortalEvent extends Event implements Cancellable {
     Location buildLocation;
     boolean zAxis;
     
-    boolean forceCalculate = false;
-    
     public EntityUseCustomPortalEvent(Entity entity, Location tpLoc, CompletePortal complete, boolean buildExitPortal,boolean forceTP, boolean bungee) {
     	this.entity=entity;
     	this.tpLoc = tpLoc;
@@ -35,14 +33,6 @@ public class EntityUseCustomPortalEvent extends Event implements Cancellable {
     	this.forceTP = forceTP;
     	this.bungee = bungee;
     }
-
-    public boolean isForceCalculate() {
-		return forceCalculate;
-	}
-
-	public void setForceCalculate(boolean forceCalculate) {
-		this.forceCalculate = forceCalculate;
-	}
 
 	public Entity getEntity() {
     	return entity;

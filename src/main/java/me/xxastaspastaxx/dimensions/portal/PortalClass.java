@@ -27,8 +27,8 @@ import me.xxastaspastaxx.dimensions.Main;
 import me.xxastaspastaxx.dimensions.Utils.Dimensions;
 import me.xxastaspastaxx.dimensions.Utils.DimensionsSettings;
 import me.xxastaspastaxx.dimensions.Utils.Messages;
-import me.xxastaspastaxx.dimensions.fileHandling.HistoryWorlds;
-import me.xxastaspastaxx.dimensions.fileHandling.LocationsFile;
+import me.xxastaspastaxx.dimensions.fileHandling.PlayerData;
+import me.xxastaspastaxx.dimensions.fileHandling.PlayerHistories;
 import me.xxastaspastaxx.dimensions.fileHandling.PortalLocations;
 import me.xxastaspastaxx.dimensions.portal.listeners.PortalListeners;
 
@@ -39,8 +39,9 @@ public class PortalClass {
 	ArrayList<Material> frameMaterials = new ArrayList<Material>();
 	ArrayList<Material> blocks = new ArrayList<Material>();
 
-	HistoryWorlds historyWorlds;
+	PlayerHistories playerHistories;
 	PortalLocations portalLocations;
+	PlayerData playerData;
 	PortalListeners portalListeners;
 	
 	boolean allowNetherPortal = true;
@@ -62,16 +63,16 @@ public class PortalClass {
 		return pl;
 	}
 	
-	public void setPortalLocations(PortalLocations portalLocations, LocationsFile locationsFile, PortalListeners portalListeners) {
+	public void setPortalLocations(PortalLocations portalLocations, PortalListeners portalListeners) {
 
 		this.portalListeners = portalListeners;
 		this.portalLocations = portalLocations;
 		completePortals = portalLocations.getPortals();
 	}
 	
-	public void setPlayerHistories(HistoryWorlds historyWorlds) {
+	public void setPlayerHistories(PlayerHistories playerHistories) {
 	  	debug("Loading histories",2);
-	  	HashMap<CustomPortal, HashMap<UUID, ArrayList<World>>> histories = historyWorlds.getHistories();
+	  	HashMap<CustomPortal, HashMap<UUID, ArrayList<World>>> histories = playerHistories.getHistories();
 	  	Iterator<CustomPortal> portalIter = histories.keySet().iterator();
 		while (portalIter.hasNext()) {
 			CustomPortal portal = portalIter.next();
@@ -79,11 +80,15 @@ public class PortalClass {
 	        	portal.setHistories(histories.get(portal));
 	    	} catch (NullPointerException e) {
 	    		portalIter.remove();
-				historyWorlds.removePortal(portal);
+	    		playerHistories.removePortal(portal);
 				
 			}
         }
-		this.historyWorlds = historyWorlds;
+		this.playerHistories = playerHistories;
+	}
+	
+	public void setPlayerData(PlayerData playerData) {
+		this.playerData = playerData;
 	}
 
 	PacketListener packetListener;
@@ -495,6 +500,14 @@ public class PortalClass {
 			if (complete.getFrames().get(0).isShown(p)) res.add(complete);
 		}
 		return res;
+	}
+
+	public void setData(UUID uuid, String data, Object value) {
+		playerData.setData(uuid, data, value);
+	}
+
+	public Object getData(UUID uuid, String data) {
+		return playerData.getData(uuid, data);
 	}
 
 }

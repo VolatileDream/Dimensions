@@ -10,6 +10,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 
 import com.sk89q.worldguard.bukkit.WorldGuardPlugin;
 
+import me.xxastaspastaxx.dimensions.Utils.DimensionsExpansion;
 import me.xxastaspastaxx.dimensions.Utils.Messages;
 import me.xxastaspastaxx.dimensions.Utils.Metrics;
 import me.xxastaspastaxx.dimensions.commands.DimensionsCommands;
@@ -38,6 +39,10 @@ public class Main extends JavaPlugin {
 			if (worldGuardFlags!=null) {
 				worldGuardFlags.enablePlatform();
 			}
+			
+	        if(Bukkit.getPluginManager().getPlugin("PlaceholderAPI") != null){
+	              new DimensionsExpansion(this).register();
+	        }
 			
 			//Commands setup
 			this.getCommand("dimensions").setExecutor(new DimensionsCommands(this,files.portalFiles.getPortalClass()));
@@ -77,7 +82,7 @@ public class Main extends JavaPlugin {
 	        }));
         
 		} catch (Exception e) {
-			System.out.println("There was an error with Dimensions. The plugin has been disabled. More info:");
+			System.out.println("[DimensionsDebugger] There was an error with Dimensions. The plugin has been disabled. More info:");
 			e.printStackTrace();
 			getPluginLoader().disablePlugin(this);
 		}

@@ -17,7 +17,6 @@ import org.bukkit.entity.Entity;
 import com.comphenix.protocol.utility.MinecraftReflection;
 
 import me.xxastaspastaxx.dimensions.Utils.Dimensions;
-import me.xxastaspastaxx.dimensions.events.EntityUseCustomPortalEvent;
 
 public class CompletePortal {
 
@@ -42,10 +41,8 @@ public class CompletePortal {
 	HashMap<Entity,Long> timer = new HashMap<Entity,Long>();
 	ArrayList<Entity> hold = new ArrayList<Entity>();
 
-	HashMap<Object, Object> tags = new HashMap<Object, Object>();
+	HashMap<String, Object> tags = new HashMap<String, Object>();
 	
-	Location link;
-
 	boolean isEntity = false;
 	
 	public CompletePortal(CustomPortal portal, ArrayList<PortalFrame> frames, List<Object> portalInfo, boolean zAxis) {
@@ -89,11 +86,13 @@ public class CompletePortal {
 	}
 	
 	public void reload() {
-		try {
-			Object nmsBlockData = getStateMethod.invoke(getPortal().getFrameBlockData(zAxis));
-			combinedId = (int) getCombinedIdMethod.invoke(blockClass,nmsBlockData);
-		} catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException e1) {
-			e1.printStackTrace();
+		if (isEntity) {
+			try {
+				Object nmsBlockData = getStateMethod.invoke(getPortal().getFrameBlockData(zAxis));
+				combinedId = (int) getCombinedIdMethod.invoke(blockClass,nmsBlockData);
+			} catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException e1) {
+				e1.printStackTrace();
+			}
 		}
 		for (PortalFrame frame : frames) {
 			frame.reload(combinedId);
@@ -149,32 +148,19 @@ public class CompletePortal {
 		return zAxis;
 	}
 	
-	public Location getLinkedLocation() {
-		if (link!=null && frames!=null) {
-			if (!portal.portalClass.isPortalAtLocation(getLocation())) link=null;
-		}
-		if (link==null && frames!=null) {
-			try {
-				Entity en = getLocation().getWorld().getEntities().get(0);
-				link = portal.calculateTeleportLocation(en, new EntityUseCustomPortalEvent(en, getLocation(), this, false, false, false));
-				if (portal.portalClass.getPortalAtLocation(link)==null)link = null;
-			} catch (Exception e) {
-				
-			}
-		}
-		return link!=null?link.clone():null;
-	}
-	
-	
-	
 	public String toString() {
-		String res = portal.getName()+";"+zAxis+";";
+		String res = portal.getName()+";"+zAxis+";"+getLocation().getWorld().getName()+";";
 		for (PortalFrame frame : frames) {
 			Location location = frame.getLocation();
 			
-			res+="/"+location.getWorld().getName()+","+location.getBlockX()+","+location.getBlockY()+","+location.getBlockZ();
+			res+="l/l"+location.getBlockX()+","+location.getBlockY()+","+location.getBlockZ();
 		}
-		res = res.replaceFirst("/", "");
+		res = res.replaceFirst("l/l", "");
+		res+=";";
+		for (String tag : tags.keySet()) {
+			res+="t/t"+tag+","+tags.get(tag);
+		}
+		res = res.replaceFirst("t/t", "");
 		return res;
 	}
 	
@@ -182,17 +168,45 @@ public class CompletePortal {
 		String[] spl = str.split(";");
 		CustomPortal portal = Dimensions.getPortalFromName(spl[0]);
 		boolean zAxis = Boolean.parseBoolean(spl[1]);
+		String worldName = spl[2];
 		
 
 		CompletePortal complete = new CompletePortal(portal, zAxis);
 		ArrayList<PortalFrame> frames = new ArrayList<PortalFrame>();
-		for (String loc : spl[2].split("/")) {
+		for (String loc : spl[3].split("l/l")) {
 			String[] locSplit = loc.split(",");
-			frames.add(new PortalFrame(complete, new Location(Bukkit.getWorld(locSplit[0]), Integer.parseInt(locSplit[1]),Integer.parseInt(locSplit[2]),Integer.parseInt(locSplit[3])), zAxis));
+			frames.add(new PortalFrame(complete, new Location(Bukkit.getWorld(worldName), Integer.parseInt(locSplit[0]),Integer.parseInt(locSplit[1]),Integer.parseInt(locSplit[2])), zAxis));
 		}
 		complete.setFrames(frames);
 		
+		if (spl.length>=5) {
+			for (String tag : spl[4].split("t/t")) {
+				String[] tagSplit = tag.split(",");
+				complete.setTag(tagSplit[0], parseTag(tagSplit[1]));
+			}
+		}
 		return complete;
+	}
+
+	private static Object parseTag(String string) {
+		
+		try {
+			return Integer.parseInt(string);
+		} catch (NumberFormatException e) {}
+		
+		try {
+			return Double.parseDouble(string);
+		} catch (NumberFormatException e) {}
+		
+		try {
+			return Float.parseFloat(string);
+		} catch (NumberFormatException e) {}
+		
+		try {
+			return Boolean.parseBoolean(string);
+		} catch (NumberFormatException e) {}
+		
+		return string;
 	}
 
 	public void setFrames(ArrayList<PortalFrame> completeFrames) {
@@ -217,7 +231,11 @@ public class CompletePortal {
 		return tags.get(key);
 	}
 	
-	public void setTag(Object key, Object value) {
+	public void setTag(String key, Object value) {
 		tags.put(key, value);
+	}
+
+	public boolean isOnHold(Entity p) {
+		return hold.contains(p);
 	}
 }

@@ -750,6 +750,7 @@ public class CustomPortal {
 			teleportLocation = new Location(getReturnWorld(p, p.getWorld(), false, true), Math.floor(loc.getX())*getRatio(), loc.getY(), Math.floor(loc.getZ())*getRatio());
 		}
 		
+		
 		if ((p instanceof Player) && portalClass.pl.getWorldGuardFlags()!=null && !portalClass.pl.getWorldGuardFlags().testState((Player) p, loc,WorldGuardFlags.UseCustomPortal)) {
 			p.sendMessage(Messages.get("worldGuardDenyMessage"));
 			return null;
@@ -913,8 +914,9 @@ public class CustomPortal {
 				}
 			}
 		} else {
-			if (!Dimensions.isAir(loc.getBlock().getType()) ||
-				!Dimensions.isAir(loc.getBlock().getRelative(BlockFace.UP).getType()))
+			if (!loc.getBlock().getRelative(BlockFace.DOWN).getType().isSolid() ||
+				isBadBlock(loc.getBlock().getType()) ||
+				isBadBlock(loc.getBlock().getRelative(BlockFace.UP).getType()))
 					return false;
 		}
 		return true;
@@ -946,7 +948,6 @@ public class CustomPortal {
 			if (startLocation.getWorld().equals(getWorld()) && startLocation.getY()>getWorldHeight()) startLocation.setY(getWorldHeight()-5);
 			event.setLocation(startLocation);
 			Location teleportLocation = null;
-			if (complete!=null && !event.isForceCalculate()) teleportLocation = complete.getLinkedLocation();
 			if (teleportLocation==null) teleportLocation = calculateTeleportLocation(p, event);
 			teleportLocation.setDirection(p.getLocation().getDirection());
 			EntityTeleportCustomPortalEvent tpEvent = new EntityTeleportCustomPortalEvent(event,teleportLocation,p.getLocation());
@@ -1021,7 +1022,6 @@ public class CustomPortal {
 				}
 			}
 		}
-		
 		return world;
 	}
 	
@@ -1111,6 +1111,14 @@ public class CustomPortal {
 		}
 
 		return world.equals(to);
+	}
+	
+	public World getTeleportWorld(Entity p, World from, boolean useDefaultWorld) {
+		if (!from.equals(getWorld())) {
+			return getWorld();
+		} else {
+			return getReturnWorld(p, from, false, useDefaultWorld);
+		}
 	}
 
 	public void setHistories(HashMap<UUID, ArrayList<World>> useHistory) {

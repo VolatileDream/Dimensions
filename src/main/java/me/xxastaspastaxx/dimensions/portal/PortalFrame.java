@@ -185,7 +185,9 @@ public class PortalFrame implements Listener {
 							} catch (ConcurrentModificationException e) { }
 						}
 
-						timerIterator.remove();
+						try {
+							timerIterator.remove();
+						} catch (ConcurrentModificationException e) {};
 					}
 			    }
 			    
@@ -240,14 +242,13 @@ public class PortalFrame implements Listener {
 			spawnPacket.sendPacket(p);
 			teleportPacket.sendPacket(p);
 			metaPacket.sendPacket(p);
+		} else {
+			p.sendBlockChange(loc, complete.getPortal().getFrameBlockData(complete.zAxis));
 		}
 		shown.add(p);
 		
 		if (!shown.isEmpty() && (!destroyed && !enabled)) {
 			startTask();
-			if (!complete.isEntity) {
-				p.sendBlockChange(loc, complete.getPortal().getFrameBlockData(complete.zAxis));
-			}
 		}
 	}
 	
