@@ -1,4 +1,4 @@
-package me.xxastaspastaxx.dimensions.fileHandling;
+package me.xxastaspastaxx.dimensions.files;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -14,8 +14,6 @@ import org.json.simple.parser.ParseException;
 
 import com.google.gson.Gson;
 
-import me.xxastaspastaxx.dimensions.portal.PortalClass;
-
 public class PlayerData {
 
 	private HashMap<UUID, HashMap<String, Object>> data = new HashMap<UUID, HashMap<String, Object>>();
@@ -23,7 +21,7 @@ public class PlayerData {
 	private final String filePath = "./plugins/Dimensions/PlayerData/playerData.json";
 	
 	@SuppressWarnings("unchecked")
-	public PlayerData(PortalClass portalClass) {
+	public PlayerData() {
 		
 		File file = new File(filePath);
 		if (!file.exists()) {
@@ -96,6 +94,10 @@ public class PlayerData {
 	public void setData(UUID uuid, String key, Object value) {
 		if (!data.containsKey(uuid)) data.put(uuid, new HashMap<String, Object>());
 		data.get(uuid).put(key, value);
+	}
+
+	public void clear() {
+		 data = new HashMap<UUID, HashMap<String, Object>>();
 	}
 
 

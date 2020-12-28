@@ -47,11 +47,11 @@ import org.bukkit.inventory.meta.Damageable;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.plugin.Plugin;
 
-import me.xxastaspastaxx.dimensions.Utils.Dimensions;
-import me.xxastaspastaxx.dimensions.Utils.DimensionsSettings;
 import me.xxastaspastaxx.dimensions.events.DestroyCause;
 import me.xxastaspastaxx.dimensions.portal.CompletePortal;
 import me.xxastaspastaxx.dimensions.portal.PortalClass;
+import me.xxastaspastaxx.dimensions.utils.Dimensions;
+import me.xxastaspastaxx.dimensions.utils.DimensionsSettings;
 
 public class PortalListeners implements Listener {
 	
@@ -280,10 +280,8 @@ public class PortalListeners implements Listener {
 		        {
 		        	Block relative = block.getRelative(face);
 		        	CompletePortal portal = portalClass.getPortalAtLocation(relative.getLocation());
-		        	if (portal!=null) {
-		            	if (portal.getPortal().isPortal(portal.getLocation(), true, true)==null) {
-		            		portal.destroy(true);
-		            	}
+		        	if (portal!=null && portal.getPortal().isPortal(portal.getLocation(), true, true)==null) {
+		            	portal.destroy(true);
 		        	}
 		        }
 			}

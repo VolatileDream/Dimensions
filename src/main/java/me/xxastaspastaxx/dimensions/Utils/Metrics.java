@@ -1,4 +1,4 @@
-package me.xxastaspastaxx.dimensions.Utils;
+package me.xxastaspastaxx.dimensions.utils;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;

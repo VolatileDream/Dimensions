@@ -1,4 +1,4 @@
-package me.xxastaspastaxx.dimensions.Utils;
+package me.xxastaspastaxx.dimensions.utils;
 
 import java.io.File;
 import java.io.IOException;
@@ -19,6 +19,7 @@ public class Messages {
 		portalMessages.addDefault("WorldGuardDenyMessage", "&c&lHey, &7sorry but you can't do that here");
 		portalMessages.addDefault("MaxHeightExceededDenyMessage", "%prefix% &cYou cannot build a portal above Y %maxWorldHeight%.");
 		portalMessages.addDefault("DisabledWorldMessage", "%prefix% &cYou cannot build a portal in %world% because its disabled.");
+		portalMessages.addDefault("NoPermission", "%prefix% &cYou do not have permission to use this command.");
 		
 		
 		portalMessages.options().copyDefaults(true);
@@ -41,6 +42,7 @@ public class Messages {
   	  	messages.put("worldGuardDenyMessage", portalSettings.getString("WorldGuardDenyMessage").replace("&", "§").replace("%prefix%", prefix));
   	  	messages.put("maxHeightExceededDenyMessage", portalSettings.getString("MaxHeightExceededDenyMessage").replace("&", "§").replace("%prefix%", prefix));
   	  	messages.put("disabledWorldMesasge", portalSettings.getString("DisabledWorldMessage").replace("&", "§").replace("%prefix%", prefix));
+  	  	messages.put("noPermission", portalSettings.getString("NoPermission").replace("&", "§").replace("%prefix%", prefix));
   	  	
   	  	return true;
 	}

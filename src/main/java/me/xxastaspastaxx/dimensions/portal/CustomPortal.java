@@ -29,14 +29,14 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.potion.PotionEffect;
 
-import me.xxastaspastaxx.dimensions.Utils.Dimensions;
-import me.xxastaspastaxx.dimensions.Utils.DimensionsSettings;
-import me.xxastaspastaxx.dimensions.Utils.Messages;
 import me.xxastaspastaxx.dimensions.events.CustomPortalDestroyEvent;
 import me.xxastaspastaxx.dimensions.events.CustomPortalIgniteEvent;
 import me.xxastaspastaxx.dimensions.events.DestroyCause;
 import me.xxastaspastaxx.dimensions.events.EntityTeleportCustomPortalEvent;
 import me.xxastaspastaxx.dimensions.events.EntityUseCustomPortalEvent;
+import me.xxastaspastaxx.dimensions.utils.Dimensions;
+import me.xxastaspastaxx.dimensions.utils.DimensionsSettings;
+import me.xxastaspastaxx.dimensions.utils.Messages;
 
 public class CustomPortal {
 	
@@ -58,6 +58,7 @@ public class CustomPortal {
 	public Material frame;
 	public Material lighter;
 
+	public boolean needsWorld;
 	public World world;
 	public int worldHeight;
 	public String ratio;
@@ -78,7 +79,7 @@ public class CustomPortal {
 	public String particlesColor;
 	
 	public CustomPortal(PortalClass portalClass, String name, boolean enabled, String displayName, boolean horizontal, Material material, String face,
-			Material frame, Material lighter, World world, int worldHeight, String ratio, int minPortalWidth, int minPortalHeight,
+			Material frame, Material lighter, World world, boolean needsWorld, int worldHeight, String ratio, int minPortalWidth, int minPortalHeight,
 			HashMap<EntityType,EntityType> entityTransformation, int[] spawningDelay, HashMap<EntityType,Integer> entitySpawning,
 			boolean buildExitPortal, boolean spawnOnAir, ArrayList<World> disabledWorlds, String particlesColor, Plugin plugin) {
 		
@@ -96,6 +97,7 @@ public class CustomPortal {
 		this.frame = frame;
 		this.lighter = lighter;
 		this.world = world;
+		this.needsWorld = needsWorld;
 		this.worldHeight = worldHeight;
 		this.ratio = ratio;
 		this.minPortalWidth = minPortalWidth;
@@ -124,6 +126,7 @@ public class CustomPortal {
 		this.frame = portal.frame;
 		this.lighter = portal.lighter;
 		this.world = portal.world;
+		this.needsWorld = portal.needsWorld;
 		this.worldHeight = portal.worldHeight;
 		this.ratio = portal.ratio;
 		this.minPortalWidth = portal.minPortalWidth;
@@ -138,7 +141,7 @@ public class CustomPortal {
 	}
 	
 	public void update(String name, boolean enabled, String displayName, boolean horizontal, Material material, String face,
-			Material frame, Material lighter, World world, int worldHeight, String ratio, int minPortalWidth, int minPortalHeight,
+			Material frame, Material lighter, World world, boolean needsWorld, int worldHeight, String ratio, int minPortalWidth, int minPortalHeight,
 			HashMap<EntityType,EntityType> entityTransformation, int[] spawningDelay, HashMap<EntityType,Integer> entitySpawning,
 			boolean buildExitPortal, boolean spawnOnAir, ArrayList<World> disabledWorlds, String particlesColor) {
 		
@@ -156,6 +159,7 @@ public class CustomPortal {
 		this.face = face;
 		this.frame = frame;
 		this.lighter = lighter;
+		this.needsWorld = needsWorld;
 		this.world = world;
 		this.worldHeight = worldHeight;
 		this.ratio = ratio;
@@ -242,7 +246,12 @@ public class CustomPortal {
 	}
 	
 	public World getWorld() {
+		if (world==null) return DimensionsSettings.getDefaultWorld();
 		return world;
+	}
+	
+	public boolean isWorldNeeded() {
+		return needsWorld;
 	}
 	
 	public int getWorldHeight() {
@@ -612,7 +621,7 @@ public class CustomPortal {
 			return false;
 		}
 		
-		if (min.getWorld().equals(getWorld()) && (min.getY()>getWorldHeight() || max.getY()>getWorldHeight())) {
+		if ((isWorldNeeded() && min.getWorld().equals(getWorld())) && (min.getY()>getWorldHeight() || max.getY()>getWorldHeight())) {
 			if (igniter!=null && (igniter instanceof Player)) {
 				String message = Messages.get("maxHeightExceededDenyMessage");
 				if (!message.equalsIgnoreCase("")) {
@@ -629,7 +638,7 @@ public class CustomPortal {
 			for(int x = (int) Math.max(max.getBlockX(), min.getBlockX()); x >= (int) Math.min(min.getBlockX(), max.getBlockX()); x--) {
 				for(int z = (int) Math.max(max.getBlockZ(), min.getBlockZ()); z >= (int) Math.min(min.getBlockZ(), max.getBlockZ()); z--) {
 					Location blockLocation = new Location(loc.getWorld(),x,y,z);
-					completeFrames.add(new PortalFrame(complete, blockLocation,complete.isZAxis()));
+					completeFrames.add(new PortalFrame(complete, blockLocation));
 				}
 			}
 		}
@@ -740,14 +749,18 @@ public class CustomPortal {
 		Location teleportLocation;
 
 		if (getWorldHeight()>0) loc.setY(loc.getY()/(256/getWorldHeight()));
-		if (loc.getWorld().equals(getWorld()) && loc.getY()+4>getWorldHeight()) loc.setY(getWorldHeight()-4);
+		if (isWorldNeeded() && loc.getWorld().equals(getWorld()) && loc.getY()+4>getWorldHeight()) loc.setY(getWorldHeight()-4);
 		
 		
 		//If player is returning plugin will find the world he got into from. If not he will be teleported to the default world
-		if (!loc.getWorld().equals(getWorld())) {
-			teleportLocation = new Location(getWorld(), Math.floor(loc.getX())/getRatio(), loc.getY(), Math.floor(loc.getZ())/getRatio());
+		if (isWorldNeeded()) {
+			if (!loc.getWorld().equals(getWorld())) {
+				teleportLocation = new Location(getWorld(), Math.floor(loc.getX())/getRatio(), loc.getY(), Math.floor(loc.getZ())/getRatio());
+			} else {
+				teleportLocation = new Location(getReturnWorld(p, p.getWorld(), false, true), Math.floor(loc.getX())*getRatio(), loc.getY(), Math.floor(loc.getZ())*getRatio());
+			}
 		} else {
-			teleportLocation = new Location(getReturnWorld(p, p.getWorld(), false, true), Math.floor(loc.getX())*getRatio(), loc.getY(), Math.floor(loc.getZ())*getRatio());
+			teleportLocation = new Location(DimensionsSettings.getDefaultWorld() , loc.getX(), loc.getY(), loc.getZ());
 		}
 		
 		
@@ -870,7 +883,7 @@ public class CustomPortal {
 	}
 	
 	public boolean canBuildPortal(Location loc, boolean zAxis, boolean checkPlatform) {
-		if (loc.getWorld().equals(getWorld()) && loc.getY()+4>getWorldHeight()) return false;
+		if (isWorldNeeded() && loc.getWorld().equals(getWorld()) && loc.getY()+4>getWorldHeight()) return false;
 
 		if (getBuildExitPortal()) {
 			if (!getSpawnOnAir()) {
@@ -945,7 +958,7 @@ public class CustomPortal {
 		if (!event.isCancelled()) {
 			//Calculate teleport location and teleport the player there
 			Location startLocation = event.getLocation();
-			if (startLocation.getWorld().equals(getWorld()) && startLocation.getY()>getWorldHeight()) startLocation.setY(getWorldHeight()-5);
+			if (isWorldNeeded() && startLocation.getWorld().equals(getWorld()) && startLocation.getY()>getWorldHeight()) startLocation.setY(getWorldHeight()-5);
 			event.setLocation(startLocation);
 			Location teleportLocation = null;
 			if (teleportLocation==null) teleportLocation = calculateTeleportLocation(p, event);
@@ -955,11 +968,11 @@ public class CustomPortal {
 			Bukkit.getServer().getPluginManager().callEvent(tpEvent);
 			if (!tpEvent.isCancelled()) {
 				if (event.getBuildLocation()!=null) buildPortal(event);
-				teleportLocation = teleportLocation.add(0,(event.getBuildLocation()!=null ? 1:0),(event.getBuildLocation()!=null && event.getZaxis()?0.5:0));
+				teleportLocation = teleportLocation.add(0,(event.getBuildLocation()!=null ? 1:0),(event.getBuildLocation()!=null && event.getZaxis()?0.5:-0.25));
 				
 				CompletePortal compl = portalClass.getPortalAtLocation(teleportLocation);
 				if (compl!=null) {
-					compl.addToHold(p);
+					compl.addToHold(p, true);
 				} else {
 					portalClass.removeFromHold(p);
 				}
@@ -979,7 +992,7 @@ public class CustomPortal {
 							entity.setHealth(entity.getHealth());
 							entity.setTicksLived(p.getTicksLived());
 							
-							compl.addToHold(entity);
+							compl.addToHold(entity, true);
 							
 							p.remove();
 						} else {
@@ -988,7 +1001,7 @@ public class CustomPortal {
 							entity.setFireTicks(p.getFireTicks());
 							entity.setTicksLived(p.getTicksLived());
 							
-							compl.addToHold(entity);
+							compl.addToHold(entity, true);
 							
 							p.remove();
 							
@@ -1009,6 +1022,7 @@ public class CustomPortal {
 	}
 
 	public World getReturnWorld(Entity p, World from, boolean update, boolean useDefaultWorld) {
+		if (!isWorldNeeded()) return DimensionsSettings.getDefaultWorld();
 		
 		ArrayList<World> history = useHistory.get(p.getUniqueId());
 		
@@ -1026,6 +1040,7 @@ public class CustomPortal {
 	}
 	
 	public void addToUsedPortals(Entity p, World world) {
+		if (!isWorldNeeded()) return;
 		if (!useHistory.containsKey(p.getUniqueId())) useHistory.put(p.getUniqueId(), new ArrayList<World>());
 		if (!world.equals(getWorld())) {
 			useHistory.get(p.getUniqueId()).add(0, world);
@@ -1069,8 +1084,8 @@ public class CustomPortal {
 					setBlock(teleportLocation.getBlock().getRelative(BlockFace.UP,i).getRelative(!zAxis ? BlockFace.EAST : BlockFace.NORTH));
 					setBlock(teleportLocation.getBlock().getRelative(BlockFace.UP,i).getRelative(!zAxis ? BlockFace.WEST : BlockFace.SOUTH,2));
 		
-					completeFrames.add(new PortalFrame(complete, teleportLocation.getBlock().getRelative(BlockFace.UP,i).getRelative(!zAxis ? BlockFace.WEST : BlockFace.SOUTH).getLocation(),zAxis));
-					completeFrames.add(new PortalFrame(complete, teleportLocation.getBlock().getRelative(BlockFace.UP,i).getLocation(),zAxis));
+					completeFrames.add(new PortalFrame(complete, teleportLocation.getBlock().getRelative(BlockFace.UP,i).getRelative(!zAxis ? BlockFace.WEST : BlockFace.SOUTH).getLocation()));
+					completeFrames.add(new PortalFrame(complete, teleportLocation.getBlock().getRelative(BlockFace.UP,i).getLocation()));
 				}
 				
 
@@ -1082,7 +1097,7 @@ public class CustomPortal {
 						if (i==-2 || i==2 || i2==-2 || i2==2)
 							setBlock(teleportLocation.getBlock().getRelative(BlockFace.EAST, i).getRelative(BlockFace.SOUTH, i2));
 						else
-							completeFrames.add(new PortalFrame(complete, teleportLocation.getBlock().getRelative(BlockFace.EAST, i).getRelative(BlockFace.SOUTH, i2).getLocation(),false));
+							completeFrames.add(new PortalFrame(complete, teleportLocation.getBlock().getRelative(BlockFace.EAST, i).getRelative(BlockFace.SOUTH, i2).getLocation()));
 					}
 				}
 				teleportLocation.add(0,-1,0);
@@ -1114,6 +1129,7 @@ public class CustomPortal {
 	}
 	
 	public World getTeleportWorld(Entity p, World from, boolean useDefaultWorld) {
+		if (!isWorldNeeded()) return DimensionsSettings.getDefaultWorld();
 		if (!from.equals(getWorld())) {
 			return getWorld();
 		} else {

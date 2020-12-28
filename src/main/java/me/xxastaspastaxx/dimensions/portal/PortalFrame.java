@@ -28,7 +28,7 @@ import com.comphenix.packetwrapper.WrapperPlayServerSpawnEntity;
 import com.comphenix.protocol.reflect.FieldAccessException;
 import com.comphenix.protocol.wrappers.WrappedDataWatcher;
 
-import me.xxastaspastaxx.dimensions.Utils.DimensionsSettings;
+import me.xxastaspastaxx.dimensions.utils.DimensionsSettings;
 
 public class PortalFrame implements Listener {
 	
@@ -60,7 +60,7 @@ public class PortalFrame implements Listener {
 	
 	long startLife;
 	
-	public PortalFrame(CompletePortal complete, Location location, boolean zAxis) {
+	public PortalFrame(CompletePortal complete, Location location) {
 		this.complete = complete;
 		this.loc = location;
 		this.fixedLoc = loc.clone().add(0.5,0.5,0.5);
@@ -149,20 +149,20 @@ public class PortalFrame implements Listener {
 					}
 				} else {
 					for (Player p : shown) {
-						p.sendBlockChange(loc,complete.getPortal().getFrameBlockData(complete.zAxis));
+						p.sendBlockChange(loc,complete.getPortal().getFrameBlockData(complete.isZAxis()));
 					}
 				}
 				
 				for (Entity en : loc.getWorld().getNearbyEntities(fixedLoc, 0.5,0.5,0.5)) {
 					if (!(en instanceof Entity)) continue;
 					if ((!DimensionsSettings.enableMobsTeleportation() && !(en instanceof Player)) || (!DimensionsSettings.enableEntitiesTeleportation() && !(en instanceof LivingEntity))) continue;
-					if (en instanceof Player && DimensionsSettings.enableNetherPortalEffect()) ((Player) en).sendBlockChange(loc, complete.netherBlockData);
+					if (en instanceof Player && DimensionsSettings.enableNetherPortalEffect()) ((Player) en).sendBlockChange(loc, complete.getNetherBlockData());
 					if (complete.getTimer().containsKey(en) || pc.isOnHold(en)) continue;
 					if (en.getLocation().getBlock().equals(loc.getBlock())) {
 						int extra = 0;
 						if (en instanceof Player && (((Player) en).getGameMode()==GameMode.CREATIVE || ((Player) en).getGameMode()==GameMode.SPECTATOR)) extra = DimensionsSettings.getTeleportDelay()*1000;
 						complete.getTimer().put(en, System.currentTimeMillis()-extra);
-						complete.addToHold(en);
+						complete.addToHold(en, true);
 					}
 				}
 				
@@ -176,27 +176,27 @@ public class PortalFrame implements Listener {
 					} else if (!complete.getTimer().containsKey(en)) {
 						try {
 							timerIterator.remove();
-							complete.hold.remove(en);
+							complete.removeFromHold(en, false);
 						} catch (ConcurrentModificationException e) { }
 					} else if (((System.currentTimeMillis()-complete.getTimer().get(en))/1000)>=DimensionsSettings.getTeleportDelay()) {
 						if (complete.getPortal().usePortal(complete, en, false, en.getWorld(), false)) {
 							try {
-								complete.hold.remove(en);
+								complete.removeFromHold(en, false);
 							} catch (ConcurrentModificationException e) { }
 						}
 
 						try {
 							timerIterator.remove();
-						} catch (ConcurrentModificationException e) {};
+						} catch (ConcurrentModificationException e) {}
 					}
 			    }
 			    
-			    Iterator<Entity> holdIterator = complete.hold.iterator();
+			    Iterator<Entity> holdIterator = complete.getHold().iterator();
 			    while (holdIterator.hasNext()) {
 			    	Entity en = holdIterator.next();
 					Location eloc = en.getLocation();
 					CompletePortal cp = pc.getPortalAtLocation(eloc);
-					if (cp==null || !cp.portal.equals(complete.getPortal())) {
+					if (cp==null || !cp.getPortal().equals(complete.getPortal())) {
 						holdIterator.remove();
 						pc.removeFromHold(en);
 					}
@@ -216,12 +216,12 @@ public class PortalFrame implements Listener {
 			}
 		}, 20,20);
 		
-		if (!complete.getPortal().getWorld().equals(loc.getWorld()) && complete.getPortal().canSpawnEntities() && loc.getBlock().getRelative(BlockFace.DOWN).getType()==complete.getPortal().getMaterial()) {
+		if ((!complete.getPortal().isWorldNeeded() || !complete.getPortal().getWorld().equals(loc.getWorld())) && complete.getPortal().canSpawnEntities() && loc.getBlock().getRelative(BlockFace.DOWN).getType()==complete.getPortal().getMaterial()) {
 			task2 = Bukkit.getScheduler().scheduleSyncRepeatingTask(pc.pl, new Runnable() {
 				public void run() {
 					EntityType type = complete.getPortal().getEntitySpawn();
 					if (type!=null) {
-						complete.hold.add(loc.getWorld().spawnEntity(loc, type));
+						complete.addToHold(loc.getWorld().spawnEntity(loc, type), false);
 					}
 				}
 			}, complete.getPortal().getEntityDelay(), complete.getPortal().getEntityDelay());
@@ -233,7 +233,7 @@ public class PortalFrame implements Listener {
 
 		if (p!=null && (shown.contains(p) || !p.getWorld().equals(loc.getWorld()))) return;
 		if (p==null) {
-			for (Entity player : loc.getWorld().getNearbyEntities(fixedLoc, 16*complete.viewDistance, 255, 16*complete.viewDistance, (player) -> player instanceof Player)) {
+			for (Entity player : loc.getWorld().getNearbyEntities(fixedLoc, 16*Bukkit.getViewDistance(), 255, 16*Bukkit.getViewDistance(), (player) -> player instanceof Player)) {
 				summon((Player) player);
 			}
 			return;
@@ -243,7 +243,7 @@ public class PortalFrame implements Listener {
 			teleportPacket.sendPacket(p);
 			metaPacket.sendPacket(p);
 		} else {
-			p.sendBlockChange(loc, complete.getPortal().getFrameBlockData(complete.zAxis));
+			p.sendBlockChange(loc, complete.getPortal().getFrameBlockData(complete.isZAxis()));
 		}
 		shown.add(p);
 		
@@ -311,7 +311,7 @@ public class PortalFrame implements Listener {
 		Bukkit.getScheduler().cancelTask(task2);
 		
 		if (remove) {
-			loc.getWorld().spawnParticle(Particle.BLOCK_CRACK, fixedLoc, 10, complete.getPortal().getFrameBlockData(complete.zAxis));
+			loc.getWorld().spawnParticle(Particle.BLOCK_CRACK, fixedLoc, 10, complete.getPortal().getFrameBlockData(complete.isZAxis()));
 			loc.getWorld().playSound(fixedLoc, Sound.BLOCK_GLASS_BREAK, 1.0F, 8.0F);
 			loc.getBlock().setBlockData(Material.AIR.createBlockData());
 		}

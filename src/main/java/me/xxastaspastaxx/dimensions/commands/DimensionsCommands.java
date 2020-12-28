@@ -6,6 +6,7 @@ import java.util.Iterator;
 import java.util.Map.Entry;
 
 import org.bukkit.Bukkit;
+import org.bukkit.World;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -13,9 +14,10 @@ import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
 
 import me.xxastaspastaxx.dimensions.Main;
-import me.xxastaspastaxx.dimensions.Utils.Messages;
 import me.xxastaspastaxx.dimensions.portal.CompletePortal;
+import me.xxastaspastaxx.dimensions.portal.CustomPortal;
 import me.xxastaspastaxx.dimensions.portal.PortalClass;
+import me.xxastaspastaxx.dimensions.utils.Messages;
 
 public class DimensionsCommands implements CommandExecutor {
 
@@ -44,9 +46,12 @@ public class DimensionsCommands implements CommandExecutor {
     	addCommand("adminperms", "[page/command]","Display permissions for admin commands",true);
     	
 
+    	//addCommand("portals", "[page/command]","Display portals",false);
     	addCommand("clear", "<all/world/portal>","Delete all saved portals.",true);
     	addCommand("reload", "","Reload settings and load new portals.",true);
     	addCommand("history", "clear","Clear portal player history",true);
+    	addCommand("data", "clear","Clear player data",true);
+    	addCommand("portal", "[page/portal name]","Show info about portal",false);
     	
     	
     	dimensionsAddons = Bukkit.getPluginManager().getPlugin("DimensionsAddons");
@@ -68,118 +73,183 @@ public class DimensionsCommands implements CommandExecutor {
     	commands.put(cmd, admin);
     }
 
-    public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
-    	if (!(sender instanceof Player)) return false;
-    	
-		Player p = (Player) sender;
-			
+    public boolean onCommand(CommandSender p, Command cmd, String label, String[] args) {
+    	//if (!(sender instanceof Player)) return false;
+		
 		if (args.length==0) {
 			if (hasPermission(p, "help")) {
 				p.sendMessage(getHelp(1, false));
 				return true;
 			}
 		} else {
+			if (p instanceof Player && commands.containsKey(args[0]) && !getPermission(args[0].toLowerCase()).equalsIgnoreCase("none") && !p.hasPermission(getPermission(args[0].toLowerCase()))) {
+				p.sendMessage(Messages.get("noPermission"));
+				return true;
+			}
+			
 			if (args[0].equalsIgnoreCase("help")) {
-				if (hasPermission(p, args[0].toLowerCase())) {
-					if (args.length==1) {
-						p.sendMessage(getHelp(1, false));
+				if (args.length==1) {
+					p.sendMessage(getHelp(1, false));
+					return true;
+				} else if (args.length==2) {
+					if (isInt(args[1])) {
+						p.sendMessage(getHelp(Integer.parseInt(args[1]), false));
 						return true;
-					} else if (args.length==2) {
-						if (isInt(args[1])) {
-							p.sendMessage(getHelp(Integer.parseInt(args[1]), false));
-							return true;
-						} else {
-							p.sendMessage(getHelp(args[1], false));
-							return true;
-						}
+					} else {
+						p.sendMessage(getHelp(args[1], false));
+						return true;
 					}
 				}
 			}
 			if (args[0].equalsIgnoreCase("adminhelp")) {
-				if (hasPermission(p, args[0].toLowerCase())) {
-					if (args.length==1) {
-						p.sendMessage(getHelp(1, true));
+				if (args.length==1) {
+					p.sendMessage(getHelp(1, true));
+					return true;
+				} else if (args.length==2) {
+					if (isInt(args[1])) {
+						p.sendMessage(getHelp(Integer.parseInt(args[1]), true));
 						return true;
-					} else if (args.length==2) {
-						if (isInt(args[1])) {
-							p.sendMessage(getHelp(Integer.parseInt(args[1]), true));
-							return true;
-						} else {
-							p.sendMessage(getHelp(args[1], true));
-							return true;
-						}
+					} else {
+						p.sendMessage(getHelp(args[1], true));
+						return true;
 					}
 				}
 			}
 			
 			if (args[0].equalsIgnoreCase("perms")) {
-				if (hasPermission(p, args[0].toLowerCase())) {
-					if (args.length==1) {
-						p.sendMessage(getPermissions(1, false));
+				if (args.length==1) {
+					p.sendMessage(getPermissions(1, false));
+					return true;
+				} else if (args.length==2) {
+					if (isInt(args[1])) {
+						p.sendMessage(getPermissions(Integer.parseInt(args[1]), false));
 						return true;
-					} else if (args.length==2) {
-						if (isInt(args[1])) {
-							p.sendMessage(getPermissions(Integer.parseInt(args[1]), false));
-							return true;
-						} else {
-							p.sendMessage(getPermissions(args[1], false));
-							return true;
-						}
+					} else {
+						p.sendMessage(getPermissions(args[1], false));
+						return true;
 					}
 				}
 			}
 			if (args[0].equalsIgnoreCase("adminperms")) {
-				if (hasPermission(p, args[0].toLowerCase())) {
-					if (args.length==1) {
-						p.sendMessage(getPermissions(1, true));
+				if (args.length==1) {
+					p.sendMessage(getPermissions(1, true));
+					return true;
+				} else if (args.length==2) {
+					if (isInt(args[1])) {
+						p.sendMessage(getPermissions(Integer.parseInt(args[1]), true));
 						return true;
-					} else if (args.length==2) {
-						if (isInt(args[1])) {
-							p.sendMessage(getPermissions(Integer.parseInt(args[1]), true));
-							return true;
-						} else {
-							p.sendMessage(getPermissions(args[1], true));
-							return true;
-						}
+					} else {
+						p.sendMessage(getPermissions(args[1], true));
+						return true;
 					}
 				}
 			}
 			//Commands
 			if (args[0].equalsIgnoreCase("clear") && args.length==2) {
-				if (hasPermission(p, args[0].toLowerCase())) {
-					Iterator<CompletePortal> iterator = pc.getCompletePortals().iterator();
-					while (iterator.hasNext()) {
-						CompletePortal complete = iterator.next();
-						if (args[1].equalsIgnoreCase("all") || (args[1].equalsIgnoreCase(complete.getFrames().get(0).getLocation().getWorld().getName())) || (args[1].equalsIgnoreCase(complete.getPortal().getName()))) {
-							iterator.remove();
-							complete.destroy(true);
-						}
+				Iterator<CompletePortal> iterator = pc.getCompletePortals().iterator();
+				while (iterator.hasNext()) {
+					CompletePortal complete = iterator.next();
+					if (args[1].equalsIgnoreCase("all") || (args[1].equalsIgnoreCase(complete.getFrames().get(0).getLocation().getWorld().getName())) || (args[1].equalsIgnoreCase(complete.getPortal().getName()))) {
+						iterator.remove();
+						complete.destroy(true);
 					}
-					p.sendMessage(prefix+"§aRemoved §c"+args[1]+"§a portals");
-					return true;
 				}
+				p.sendMessage(prefix+"§aRemoved §c"+args[1]+"§a portals");
+				return true;
 			}
 			
 			if (args[0].equalsIgnoreCase("reload") && args.length==1) {
-				if (hasPermission(p, args[0].toLowerCase())) {
-					try {
-						Main.getInstance().files.reload();
-						reloadDimensionsAddons();
-						p.sendMessage(prefix+"§aSuccesfully reloaded files.");
-					} catch (Exception e) {
-						p.sendMessage(prefix+"§cCould not reload files. Check console for errors.");
-						e.printStackTrace();
-					}
-					return true;
+				try {
+					Main.getInstance().files.reload();
+					reloadDimensionsAddons();
+					p.sendMessage(prefix+"§aSuccesfully reloaded files.");
+				} catch (Exception e) {
+					p.sendMessage(prefix+"§cCould not reload files. Check console for errors.");
+					e.printStackTrace();
 				}
+				return true;
 			}
 			
 			if (args[0].equalsIgnoreCase("history") && args.length==2 && args[1].equalsIgnoreCase("clear")) {
-				if (hasPermission(p, args[0].toLowerCase())) {
-					pc.clearHistory();
-					p.sendMessage(prefix+"§aCleared portal history.");
-					return true;
+				pc.clearHistory();
+				p.sendMessage(prefix+"§aCleared portal history.");
+				return true;
+			}
+			
+			if (args[0].equalsIgnoreCase("data") && args.length==2 && args[1].equalsIgnoreCase("clear")) {
+				pc.clearData();
+				p.sendMessage(prefix+"§aCleared player data.");
+				return true;
+			}
+			
+			if (args[0].equalsIgnoreCase("portal")) {
+				if (args.length==2) {
+					if (isInt(args[1])) {
+						int page = Integer.parseInt(args[1]);
+						int pageCount = (int) Math.ceil(pc.getPortals().size()/cmdPerPage);
+				    	if (page>pageCount) {
+				    		p.sendMessage("§7Page §c"+page+"§7 was found.");
+				    		return true;
+				    	}
+				    	
+				    	String result = "§7§m---§7[§c"+page+"/"+pageCount+"§7]§m---§7[§c"+pluginName+"§7]§m---§7[§c"+page+"/"+pageCount+"§7]§m---§r\n";
+				    	result += "\n";
+				    	
+				    	for (int i=(int) ((page-1)*cmdPerPage);i<cmdPerPage*page;i++) {
+				    		if (i>=pc.getPortals().size()) break;
+				    		CustomPortal portal = pc.getPortals().get(i);
+				    		result+= (portal.isEnabled()?"§a[+]":"§c[x]")+portal.getName()+"§7 | "+portal.getWorld().getName()+" | "+portal.getMaterial().name().toLowerCase().replace("_", " ")+" | "+portal.getLighter().name().toLowerCase().replace("_", " ")+"\n";
+				    	}
+				    	
+				    	result += "\n";
+				    	result += "§7§m---§7[§c"+page+"/"+pageCount+"§7]§m---§7[§c"+pluginName+"§7]§m---§7[§c"+page+"/"+pageCount+"§7]§m---\n";
+				    	
+				    	p.sendMessage(result);
+					} else {
+						CustomPortal portal = pc.getPortalByName(args[1]);
+						if (portal==null) {
+				    		p.sendMessage("§7Portal §c"+args[1]+"§7 was found.");
+				    		return true;
+				    	}
+						
+						String result = "§7Info about "+(portal.isEnabled()?"§a[+]":"§c[x]")+portal.getName()+"§7:";
+						result+="\n§7Horizontal:§a "+portal.isHorizontal();
+						result+="\n§7Material:§a "+portal.getMaterial().name().toLowerCase().replace("_", " ")+" | "+portal.getFaceString();
+						result+="\n§7Frame:§a "+portal.getFrame().name().toLowerCase().replace("_", " ");
+						result+="\n§7Lighter:§a "+portal.getLighter().name().toLowerCase().replace("_", " ");
+						result+="\n§7Minimum width/height:§a "+portal.getMinPortalWidth()+"/"+portal.getMinPortalHeight();
+						result+="\n§7World Name:§a "+portal.getWorld().getName()+(portal.isWorldNeeded()?"":" §7(Not required)");
+						result+="\n§7World Ratio:§a "+portal.getRatio();
+						result+="\n§7Build exit portal:§a "+portal.getBuildExitPortal();
+						result+="\n§7SpawnOnAir:§a "+portal.canSpawnEntities();
+						String disabledWorlds = "";
+						for (World world : portal.getDisabledWorlds()) {
+							disabledWorlds +=", "+world.getName();
+						}
+						result+="\n§7DisabledWorlds:§a "+(portal.getDisabledWorlds().size()==0?"§cnone":disabledWorlds.replaceFirst(", ", ""));
+						p.sendMessage(result);
+					}
+				} else {
+					int page = 1;
+					int pageCount = (int) Math.ceil(pc.getPortals().size()/cmdPerPage);
+			    	//if (page>getPageCount(admin)) return "§7Page §c"+page+"§7 was found.";
+			    	
+			    	String result = "§7§m---§7[§c"+page+"/"+pageCount+"§7]§m---§7[§c"+pluginName+"§7]§m---§7[§c"+page+"/"+pageCount+"§7]§m---§r\n";
+			    	result += "\n";
+			    	
+			    	for (int i=(int) ((page-1)*cmdPerPage);i<cmdPerPage*page;i++) {
+			    		if (i>=pc.getPortals().size()) break;
+			    		CustomPortal portal = pc.getPortals().get(i);
+			    		result+= (portal.isEnabled()?"§a[+]":"§c[x]")+portal.getName()+"§7 | "+portal.getWorld().getName()+" | "+portal.getMaterial().name().toLowerCase().replace("_", " ")+" | "+portal.getLighter().name().toLowerCase().replace("_", " ")+"\n";
+			    	}
+			    	
+			    	result += "\n";
+			    	result += "§7§m---§7[§c"+page+"/"+pageCount+"§7]§m---§7[§c"+pluginName+"§7]§m---§7[§c"+page+"/"+pageCount+"§7]§m---\n";
+			    	
+			    	p.sendMessage(result);
 				}
+				
+				return true;
 			}
 		}
 		
@@ -192,7 +262,8 @@ public class DimensionsCommands implements CommandExecutor {
 		return true;
 	}
     
-    private boolean hasPermission(Player p, String command) {
+	private boolean hasPermission(CommandSender p, String command) {
+		if (!(p instanceof Player)) return true;
 		return getPermission(command).equalsIgnoreCase("none") || p.hasPermission(getPermission(command));
 	}
 
@@ -356,7 +427,7 @@ public class DimensionsCommands implements CommandExecutor {
     }
     
     
-    public String getSuggestionInHelp(Player p, String arg) {
+    public String getSuggestionInHelp(CommandSender p, String arg) {
     	
     	for (String cmd : commands.keySet()) {
     		if (cmd.toLowerCase().startsWith(arg.toLowerCase())) {

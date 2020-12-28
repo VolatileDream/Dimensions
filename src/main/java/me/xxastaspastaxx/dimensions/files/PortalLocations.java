@@ -1,4 +1,4 @@
-package me.xxastaspastaxx.dimensions.fileHandling;
+package me.xxastaspastaxx.dimensions.files;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -47,7 +47,10 @@ public class PortalLocations {
 	        @SuppressWarnings("unchecked")
 			Iterator<String> iterator = jsonArray.iterator();
 	        while(iterator.hasNext()) {
-	        	locations.add(CompletePortal.parseCompletePortal(iterator.next()));
+	        	CompletePortal compl = CompletePortal.parseCompletePortal(iterator.next());
+	        	if (compl!=null) {
+		        	locations.add(compl);
+	        	}
 	        }
 		} catch (FileNotFoundException e) {
 			e.printStackTrace();

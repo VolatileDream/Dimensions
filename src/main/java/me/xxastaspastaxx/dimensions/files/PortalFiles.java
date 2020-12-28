@@ -1,10 +1,9 @@
-package me.xxastaspastaxx.dimensions.fileHandling;
+package me.xxastaspastaxx.dimensions.files;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
@@ -20,32 +19,31 @@ import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.world.WorldSaveEvent;
 
 import me.xxastaspastaxx.dimensions.Main;
-import me.xxastaspastaxx.dimensions.Utils.Dimensions;
-import me.xxastaspastaxx.dimensions.Utils.DimensionsSettings;
-import me.xxastaspastaxx.dimensions.Utils.Messages;
 import me.xxastaspastaxx.dimensions.portal.CompletePortal;
 import me.xxastaspastaxx.dimensions.portal.CustomPortal;
 import me.xxastaspastaxx.dimensions.portal.PortalClass;
 import me.xxastaspastaxx.dimensions.portal.PortalFrame;
 import me.xxastaspastaxx.dimensions.portal.listeners.PortalListeners;
+import me.xxastaspastaxx.dimensions.utils.Dimensions;
+import me.xxastaspastaxx.dimensions.utils.DimensionsSettings;
+import me.xxastaspastaxx.dimensions.utils.Messages;
 
 public class PortalFiles implements Listener {
 
-	PortalClass portalClass;
-	PortalListeners portalListeners;
+	private PortalClass portalClass;
+	private PortalListeners portalListeners;
 	
-	PortalLocations portalLocations;
-
-	PlayerHistories playerHistories;
-	
-	PlayerData playerData;
+	private PortalLocations portalLocations;
+	private PlayerHistories playerHistories;
+	private PlayerData playerData;
+	private long lastSave = 0;
 	
   	public static ArrayList<CustomPortal> createdPortals = new ArrayList<CustomPortal>();
   	public static ArrayList<Material> lighters = new ArrayList<Material>();
   	public static ArrayList<Material> frameMaterials = new ArrayList<Material>();
   	public static ArrayList<Material> blocks = new ArrayList<Material>();
 	
-	Main plugin;
+  	private Main plugin;
 	
 	public PortalFiles(Main pl) {
 		
@@ -68,7 +66,7 @@ public class PortalFiles implements Listener {
 		portalSettings.addDefault("SafeSpotSearchRadius", 16);
 		portalSettings.addDefault("ConsumeItems", true);
 		portalSettings.addDefault("NetherPortalEffect", true);
-		
+		if (portalSettings.getStringList("PathRules").isEmpty()) portalSettings.addDefault("PathRules", new ArrayList<String>());
 		
 		portalSettings.options().copyDefaults(true);
   	  	
@@ -94,65 +92,17 @@ public class PortalFiles implements Listener {
 		portalLocations = new PortalLocations();
 		portalClass.setPortalLocations(portalLocations, portalListeners);
 
+		File fl = new File("./plugins/Dimensions/PlayerData/");
+		if (!fl.exists()) fl.mkdir();
+		
 		playerHistories = new PlayerHistories(portalClass);
         portalClass.setPlayerHistories(playerHistories);
         
-		playerData = new PlayerData(portalClass);
+		playerData = new PlayerData();
         portalClass.setPlayerData(playerData);
 
 
 	    Bukkit.getServer().getPluginManager().registerEvents(this, pl);
-	}
-	
-	public void fixOutdatedPortalFile(File portal) {
-		YamlConfiguration portalConfig = YamlConfiguration.loadConfiguration(portal);
-		
-		portalConfig.addDefault("Enable", true);
-		portalConfig.addDefault("DisplayName", "&SamplePortal");
-
-  	  	portalConfig.addDefault("Portal.Horizontal", false);
-  	  	portalConfig.addDefault("Portal.Block.Material", "stone");
-  	  	portalConfig.addDefault("Portal.Block.Face", "all");
-  	  	portalConfig.addDefault("Portal.ParticlesColor", "75;75;75");
-  	  	portalConfig.addDefault("Portal.Frame", "nether_portal");
-  	  	portalConfig.addDefault("Portal.Lighter", "flint_and_steel");
-  	  	portalConfig.addDefault("Portal.MinWidth", 4);
-  	  	portalConfig.addDefault("Portal.MinHeight", 5);
-  	  	
-  	  	portalConfig.addDefault("World.Name", "world");
-  	  	portalConfig.addDefault("World.MaxHeight", 256);
-  	  	portalConfig.addDefault("World.Ratio", "1:1");
-  	  	
-  	  	if (portalConfig.getStringList("Entities.Transformation").isEmpty()) {
-  	  		List<String> entitiesTransformation = portalConfig.getStringList("Entities.Transformation");
-  	  		//entitiesTransformation.add("SKELETON->WITHER_SKELETON");
-  	  		portalConfig.set("Entities.Transformation", entitiesTransformation);
-  	  	}
-  	  	
-
-  	  	portalConfig.addDefault("Entities.Spawning.Delay", "5000-10000");
-  	  	if (portalConfig.getStringList("Entities.Spawning.List").isEmpty()) {
-  	  		List<String> entitySpawning = portalConfig.getStringList("Entities.Spawning.List");
-  	  		//entitySpawning.add("SKELETON;50");
-  	  		portalConfig.set("Entities.Spawning.List", entitySpawning);
-  	  	}
-  	  	
-  	  	portalConfig.addDefault("BuildExitPortal", true);
-  	  	portalConfig.addDefault("SpawnOnAir", false);
-
-  	  	if (portalConfig.getStringList("DisabledWorlds").isEmpty()) {
-  	  		List<String> disabledWolrds = portalConfig.getStringList("DisabledWorlds");
-  	  		//disabledWolrds.add("world_the_end");
-  	  		portalConfig.set("DisabledWorlds", disabledWolrds);
-  	  	}
-  	  	
-  	  	portalConfig.options().copyDefaults(true);
-
-  	  	try {
-  	  		portalConfig.save(portal);
-  	  	} catch (IOException e) {
-			e.printStackTrace();
-		}
 	}
 	
 	public PortalClass getPortalClass() {
@@ -184,7 +134,7 @@ public class PortalFiles implements Listener {
 		if (hold!=null && (boolean) hold) {
 			CompletePortal compl = portalClass.getPortalAtLocation(p.getLocation());
 			if (compl!=null) {
-				compl.addToHold(p);
+				compl.addToHold(p, true);
 			}
 			playerData.setData(p.getUniqueId(), "Hold", false);
 		}
@@ -204,8 +154,6 @@ public class PortalFiles implements Listener {
 		}
 	}
 	
-	
-	long lastSave = 0;
 	@EventHandler(ignoreCancelled = true)
 	public void onSave(WorldSaveEvent e) {
 		if ((System.currentTimeMillis()-lastSave)/1000>=5) {
@@ -236,46 +184,47 @@ public class PortalFiles implements Listener {
 			if (fileName.contentEquals("portalLocations.json") || fileName.contains(" ")) continue;
 		  	portalClass.debug("Loading "+fileName,2);
 			
-			//Add strings added in new version that are missing and will crash plugin
-			fixOutdatedPortalFile(portal);
-
 			YamlConfiguration portalConfig = YamlConfiguration.loadConfiguration(portal);
 			
 			//Load portal settings
 			String name = fileName.replace(".yml", "");
 			
-			boolean enabled = portalConfig.getBoolean("Enable");
+			boolean enabled = portalConfig.getBoolean("Enable", false);
 			if (!enabled) continue;
-			String displayName = portalConfig.getString("DisplayName");
+			String displayName = portalConfig.getString("DisplayName", "Unnamed");
 
-			boolean horizontal = portalConfig.getBoolean("Portal.Horizontal");
-			Material material = Material.matchMaterial(portalConfig.getString("Portal.Block.Material"));
-			String face = portalConfig.getString("Portal.Block.Face");
-			Material frame = Material.matchMaterial(portalConfig.getString("Portal.Frame"));
-			Material lighter = Material.matchMaterial(portalConfig.getString("Portal.Lighter"));
-			int minPortalWidth = portalConfig.getInt("Portal.MinWidth");
-			int minPortalHeight = portalConfig.getInt("Portal.MinHeight");
+			boolean horizontal = portalConfig.getBoolean("Portal.Horizontal", false);
+			Material material = Material.matchMaterial(portalConfig.getString("Portal.Block.Material", "COBBLESTONE"));
+			String face = portalConfig.getString("Portal.Block.Face", "all");
+			Material frame =  Material.matchMaterial(portalConfig.getString("Portal.Frame", "NETHER_PORTAL"));
+			Material lighter = Material.matchMaterial(portalConfig.getString("Portal.Lighter", "FLINT_AND_STEEL"));
+			int minPortalWidth = portalConfig.getInt("Portal.MinWidth", 4);
+			int minPortalHeight = portalConfig.getInt("Portal.MinHeight", 5);
 			
-			String worldName = portalConfig.getString("World.Name");
+			
+			boolean needsWorld = portalConfig.getBoolean("World.isNeeded", true);
+			String worldName = portalConfig.getString("World.Name", "world");
 			World world = Bukkit.getWorld(worldName);
-			if (!Bukkit.getServer().getWorlds().contains(world)) {
-				if (DimensionsSettings.isGenerateWorlds()) {
-					world = Bukkit.getServer().createWorld(new WorldCreator(worldName));
-				} else {
+			if (needsWorld) {
+				if (!Bukkit.getServer().getWorlds().contains(world)) {
+					if (DimensionsSettings.isGenerateWorlds()) {
+						world = Bukkit.getServer().createWorld(new WorldCreator(worldName));
+					} else {
+						Dimensions.debug("Disabling portal: "+name, 0);
+						Dimensions.debug("Reason: There is no world "+worldName+" and \"GenerateNewWorlds\" is set to \"false\"", 0);
+						enabled = false;
+						continue;
+					}
+				}
+				if (world.equals(DimensionsSettings.getDefaultWorld())) {
 					Dimensions.debug("Disabling portal: "+name, 0);
-					Dimensions.debug("Reason: There is no world "+worldName+" and \"GenerateNewWorlds\" is set to \"false\"", 0);
+					Dimensions.debug("Reason: There cannot be a portal that leads to the default world", 0);
 					enabled = false;
 					continue;
 				}
 			}
-			if (world.equals(DimensionsSettings.getDefaultWorld())) {
-				Dimensions.debug("Disabling portal: "+name, 0);
-				Dimensions.debug("Reason: There cannot be a portal that leads to the default world", 0);
-				enabled = false;
-				continue;
-			}
-			int worldHeight = portalConfig.getInt("World.MaxHeight");
-			String ratio = portalConfig.getString("World.Ratio");
+			int worldHeight = portalConfig.getInt("World.MaxHeight", 256);
+			String ratio = portalConfig.getString("World.Ratio", "1:1");
 			
 			HashMap<EntityType,EntityType> entityTransformation = new HashMap<EntityType,EntityType>();
 			for (String entity : portalConfig.getStringList("Entities.Transformation")) {
@@ -283,7 +232,7 @@ public class PortalFiles implements Listener {
 				entityTransformation.put(EntityType.valueOf(spl[0]), EntityType.valueOf(spl[1]));
 			}
 			
-			String[] spawningDelayString = portalConfig.getString("Entities.Spawning.Delay").split("-");
+			String[] spawningDelayString = portalConfig.getString("Entities.Spawning.Delay", "5000-10000").split("-");
 			int[] spawningDelay = {Integer.parseInt(spawningDelayString[0]),Integer.parseInt(spawningDelayString[1])};
 			HashMap<EntityType,Integer> entitySpawning = new HashMap<EntityType,Integer>();
 			for (String entity : portalConfig.getStringList("Entities.Spawning.List")) {
@@ -291,15 +240,15 @@ public class PortalFiles implements Listener {
 				entitySpawning.put(EntityType.valueOf(spl[0]), Integer.parseInt(spl[1]));
 			}
 			
-			boolean buildExitPortal = portalConfig.getBoolean("BuildExitPortal");
-			boolean spawnOnAir = portalConfig.getBoolean("SpawnOnAir");
+			boolean buildExitPortal = portalConfig.getBoolean("BuildExitPortal", true);
+			boolean spawnOnAir = portalConfig.getBoolean("SpawnOnAir", false);
 			
 			ArrayList<World> disabledWorlds = new ArrayList<World>();
 			for (String disabledWorld : portalConfig.getStringList("DisabledWorlds")) {
 				disabledWorlds.add(Bukkit.getWorld(disabledWorld));
 			}
 			
-			String particlesColor = portalConfig.getString("Portal.ParticlesColor");
+			String particlesColor = portalConfig.getString("Portal.ParticlesColor", "0;0;0");
 			
 			if (!lighters.contains(lighter)) {
 				lighters.add(lighter);
@@ -314,10 +263,10 @@ public class PortalFiles implements Listener {
 			//add the custom portal to the list so it can be used for later calculations
 			CustomPortal oldPortal = portalClass.getPortalByName(name);
 			if (oldPortal!=null) {
-				oldPortal.update(name, enabled, displayName, horizontal, material, face, frame, lighter, world, worldHeight, ratio, minPortalWidth, minPortalHeight, entityTransformation, spawningDelay, entitySpawning, buildExitPortal, spawnOnAir, disabledWorlds, particlesColor);
+				oldPortal.update(name, enabled, displayName, horizontal, material, face, frame, lighter, world, needsWorld, worldHeight, ratio, minPortalWidth, minPortalHeight, entityTransformation, spawningDelay, entitySpawning, buildExitPortal, spawnOnAir, disabledWorlds, particlesColor);
 				oldPortals.remove(oldPortal);
 			} else {
-				createdPortals.add(new CustomPortal(portalClass, name, enabled, displayName, horizontal, material, face, frame, lighter, world, worldHeight, ratio, minPortalWidth, minPortalHeight, entityTransformation, spawningDelay, entitySpawning, buildExitPortal, spawnOnAir, disabledWorlds, particlesColor, plugin));
+				createdPortals.add(new CustomPortal(portalClass, name, enabled, displayName, horizontal, material, face, frame, lighter, world, needsWorld, worldHeight, ratio, minPortalWidth, minPortalHeight, entityTransformation, spawningDelay, entitySpawning, buildExitPortal, spawnOnAir, disabledWorlds, particlesColor, plugin));
 			}
 		  	portalClass.debug("Loaded "+fileName,2);
 		}

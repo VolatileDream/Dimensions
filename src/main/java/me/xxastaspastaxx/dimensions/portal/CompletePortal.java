@@ -16,7 +16,7 @@ import org.bukkit.entity.Entity;
 
 import com.comphenix.protocol.utility.MinecraftReflection;
 
-import me.xxastaspastaxx.dimensions.Utils.Dimensions;
+import me.xxastaspastaxx.dimensions.utils.Dimensions;
 
 public class CompletePortal {
 
@@ -25,23 +25,21 @@ public class CompletePortal {
 	private Method getCombinedIdMethod;
 	private Method getStateMethod;
 	
-	int viewDistance;
+	private int combinedId = 0;
 	
-	int combinedId = 0;
-	
-	BlockData netherBlockData;
+	private BlockData netherBlockData;
 	
 	/*******************************************************************************/
 	
-	CustomPortal portal;
-	ArrayList<PortalFrame> frames;
-	List<Object> portalInfo;
-	boolean zAxis;
+	private CustomPortal portal;
+	private ArrayList<PortalFrame> frames;
+	private List<Object> portalInfo;
+	private boolean zAxis;
 	
-	HashMap<Entity,Long> timer = new HashMap<Entity,Long>();
-	ArrayList<Entity> hold = new ArrayList<Entity>();
+	private HashMap<Entity,Long> timer = new HashMap<Entity,Long>();
+	private ArrayList<Entity> hold = new ArrayList<Entity>();
 
-	HashMap<String, Object> tags = new HashMap<String, Object>();
+	private HashMap<String, Object> tags = new HashMap<String, Object>();
 	
 	boolean isEntity = false;
 	
@@ -60,10 +58,10 @@ public class CompletePortal {
 		this.portal = portal;
 		this.zAxis = zAxis;
 		setup();
+		
 	}
 
 	public void setup() {
-		viewDistance = Bukkit.getViewDistance();
 		
 		if (getPortal().getFrame().isSolid() || getPortal().getFrame()==Material.NETHER_PORTAL) {
 			try {
@@ -148,6 +146,10 @@ public class CompletePortal {
 		return zAxis;
 	}
 	
+	public BlockData getNetherBlockData() {
+		return netherBlockData;
+	}
+	
 	public String toString() {
 		String res = portal.getName()+";"+zAxis+";"+getLocation().getWorld().getName()+";";
 		for (PortalFrame frame : frames) {
@@ -173,16 +175,28 @@ public class CompletePortal {
 
 		CompletePortal complete = new CompletePortal(portal, zAxis);
 		ArrayList<PortalFrame> frames = new ArrayList<PortalFrame>();
+		boolean broken = false;
 		for (String loc : spl[3].split("l/l")) {
 			String[] locSplit = loc.split(",");
-			frames.add(new PortalFrame(complete, new Location(Bukkit.getWorld(worldName), Integer.parseInt(locSplit[0]),Integer.parseInt(locSplit[1]),Integer.parseInt(locSplit[2])), zAxis));
+			Location loca = new Location(Bukkit.getWorld(worldName), Integer.parseInt(locSplit[0]),Integer.parseInt(locSplit[1]),Integer.parseInt(locSplit[2]));
+			try {
+				loca.getChunk();
+			} catch (NullPointerException e) {
+				broken = true;
+				break;
+			}
+			frames.add(new PortalFrame(complete, loca));
 		}
-		complete.setFrames(frames);
-		
-		if (spl.length>=5) {
-			for (String tag : spl[4].split("t/t")) {
-				String[] tagSplit = tag.split(",");
-				complete.setTag(tagSplit[0], parseTag(tagSplit[1]));
+		if (broken) {
+			complete = null;
+		} else {
+			complete.setFrames(frames);
+			
+			if (spl.length>=5) {
+				for (String tag : spl[4].split("t/t")) {
+					String[] tagSplit = tag.split(",");
+					complete.setTag(tagSplit[0], parseTag(tagSplit[1]));
+				}
 			}
 		}
 		return complete;
@@ -201,10 +215,9 @@ public class CompletePortal {
 		try {
 			return Float.parseFloat(string);
 		} catch (NumberFormatException e) {}
-		
-		try {
-			return Boolean.parseBoolean(string);
-		} catch (NumberFormatException e) {}
+
+		if (string.equals("true")) return true;
+		if (string.equals("false")) return false;
 		
 		return string;
 	}
@@ -218,9 +231,14 @@ public class CompletePortal {
 		}
 	}
 	
-	public void addToHold(Entity en) {
+	public void addToHold(Entity en, boolean pc) {
 		hold.add(en);
-		portal.portalClass.addToHold(en);
+		if (pc) portal.portalClass.addToHold(en);
+	}
+	
+	public void removeFromHold(Entity en, boolean pc) {
+		hold.remove(en);
+		if (pc) portal.portalClass.removeFromHold(en);
 	}
 
 	public HashMap<Entity, Long> getTimer() {
@@ -237,5 +255,9 @@ public class CompletePortal {
 
 	public boolean isOnHold(Entity p) {
 		return hold.contains(p);
+	}
+	
+	public ArrayList<Entity> getHold() {
+		return hold;
 	}
 }

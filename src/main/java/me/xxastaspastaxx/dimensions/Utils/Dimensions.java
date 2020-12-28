@@ -1,4 +1,4 @@
-package me.xxastaspastaxx.dimensions.Utils;
+package me.xxastaspastaxx.dimensions.utils;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -153,5 +153,9 @@ public class Dimensions {
 	
 	public static void debug(String msg, int lvl) {
 		portalClass.debug(msg, lvl);
+	}
+	
+	public static CompletePortal getLookingPortal(LivingEntity e) {
+		return portalClass.getLookingPortal(e);
 	}
 }

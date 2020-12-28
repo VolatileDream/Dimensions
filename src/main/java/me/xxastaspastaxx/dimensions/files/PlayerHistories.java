@@ -1,4 +1,4 @@
-package me.xxastaspastaxx.dimensions.fileHandling;
+package me.xxastaspastaxx.dimensions.files;
 
 import java.io.File;
 import java.io.FileNotFoundException;

@@ -1,4 +1,4 @@
-package me.xxastaspastaxx.dimensions.Utils;
+package me.xxastaspastaxx.dimensions.utils;
 
 import org.bukkit.entity.Player;
 
@@ -114,11 +114,14 @@ public class DimensionsExpansion extends PlaceholderExpansion {
        
     	subIdentifier = "portal_";
     	if (identifier.startsWith(subIdentifier)) {
-    		subIdentifier = identifier.substring(subIdentifier.length());    				
+    		subIdentifier = identifier.substring(subIdentifier.length());
+    		String res = null;
     		for (CustomPortal portal : Dimensions.getPortals()) {
     			if (!subIdentifier.startsWith(portal.getName())) continue;
-    			return (String) Dimensions.getPortalConfiguration(portal).get(subIdentifier.substring(portal.getName().length()), "null");
+    			res = (String) Dimensions.getPortalConfiguration(portal).get(subIdentifier.substring(portal.getName().length()), "null");
+    			break;
     		}
+    		if (res!=null) return res;
     	}
     	
     	subIdentifier = "player_";
@@ -148,14 +151,12 @@ public class DimensionsExpansion extends PlaceholderExpansion {
 					if (complete.isOnHold(p)) return complete.isZAxis()+"";
 				}
     			return "false";
-    		} else if (args[0].equalsIgnoreCase("getReturnWorld")) {
-    			if (args.length>1) {
-    				CustomPortal portal = Dimensions.getPortalFromName(args[1]);
-    				if (portal!=null) {
-    					return portal.getReturnWorld(p, p.getWorld(), false, true).getName();
-    				}
-					return "null";
-    			}
+    		} else if (args[0].equalsIgnoreCase("getReturnWorld") && args.length>1) {
+    			CustomPortal portal = Dimensions.getPortalFromName(args[1]);
+				if (portal!=null) {
+					return portal.getReturnWorld(p, p.getWorld(), false, true).getName();
+				}
+				return "null";
     		}
     	}
  

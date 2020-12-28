@@ -4,11 +4,14 @@ package me.xxastaspastaxx.dimensions.portal;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.UUID;
 
+import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
+import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
@@ -24,13 +27,13 @@ import com.comphenix.protocol.events.PacketEvent;
 import com.comphenix.protocol.events.PacketListener;
 
 import me.xxastaspastaxx.dimensions.Main;
-import me.xxastaspastaxx.dimensions.Utils.Dimensions;
-import me.xxastaspastaxx.dimensions.Utils.DimensionsSettings;
-import me.xxastaspastaxx.dimensions.Utils.Messages;
-import me.xxastaspastaxx.dimensions.fileHandling.PlayerData;
-import me.xxastaspastaxx.dimensions.fileHandling.PlayerHistories;
-import me.xxastaspastaxx.dimensions.fileHandling.PortalLocations;
+import me.xxastaspastaxx.dimensions.files.PlayerData;
+import me.xxastaspastaxx.dimensions.files.PlayerHistories;
+import me.xxastaspastaxx.dimensions.files.PortalLocations;
 import me.xxastaspastaxx.dimensions.portal.listeners.PortalListeners;
+import me.xxastaspastaxx.dimensions.utils.Dimensions;
+import me.xxastaspastaxx.dimensions.utils.DimensionsSettings;
+import me.xxastaspastaxx.dimensions.utils.Messages;
 
 
 public class PortalClass {
@@ -91,7 +94,7 @@ public class PortalClass {
 		this.playerData = playerData;
 	}
 
-	PacketListener packetListener;
+	private PacketListener packetListener;
 	@SuppressWarnings("serial")
 	public void setPortals(ArrayList<CustomPortal> portals, ArrayList<Material> lighters, ArrayList<Material> frameMaterials, ArrayList<Material> blocks) {
 		this.portals = portals;
@@ -325,23 +328,38 @@ public class PortalClass {
 	}
 	
 	public void findBestPathAndUse(Player p, World from, World to) {
-		
-		if (from.equals(to) || isOnHold(p)) return;
+	
+		HashMap<String,ArrayList<String>> rules = DimensionsSettings.getPathRules();
+		//forceReturnWorld
+		//ignoreIrrelevantWorld # (string can start with startsWith:)
 
+		if (from.equals(to) || isOnHold(p)) return;
+		
 		CustomPortal head = null;
 		for (CustomPortal portal : portals) {
+			if (!portal.isWorldNeeded()) continue;
 			if (portal.getWorld().equals(from)) head = portal;
 		}
 		
+		
 		boolean found = false;
 		while (!found && head!=null) {
-			boolean noPortal = true;
-			for (CustomPortal portal : portals) {
-				if (head.isReturnWorld(p, to)) {
-					head.getReturnWorld(p, head.getWorld(), true, true);
-					found = true;
+			if (head.isReturnWorld(p, to)) {
+				head.getReturnWorld(p, head.getWorld(), true, true);
+				return;
+			}
+			
+			for (String worldRule : rules.get("forceReturnWorld")) {
+				if (head.isReturnWorld(p, Bukkit.getWorld(worldRule))) {
+					findBestPathAndUse(p, Bukkit.getWorld(worldRule), to);
+					head.getReturnWorld(p, from, true, true);
 					return;
 				}
+			}
+			
+			boolean noPortal = true;
+			for (CustomPortal portal : portals) {
+				if (!portal.isWorldNeeded()) continue;
 				if (head.isReturnWorld(p, portal.getWorld())) {
 					head.getReturnWorld(p, head.getWorld(), true, true);
 					head = portal;
@@ -351,10 +369,10 @@ public class PortalClass {
 			}
 			if (noPortal) found = true;
 		}
-		
-
-		if (head == null) {
+	
+		if (head == null && !containsStartsWith(rules.get("ignoreIrrelevantWorld"), from.getName())) {
 			for (CustomPortal portal : portals) {
+				if (!portal.isWorldNeeded()) continue;
 				if (portal.getWorld().equals(to)) {
 					if (!portal.getDisabledWorlds().contains(from)) {
 						portal.addToUsedPortals(p, from);
@@ -376,6 +394,7 @@ public class PortalClass {
 		while (!found) {
 			boolean noPortal = true;
 			for (CustomPortal portal : portals) {
+				if (!portal.isWorldNeeded()) continue;
 				if (portal.equals(head)) continue;
 				if (!head.getDisabledWorlds().contains(portal.getWorld())) {
 					historyPortals.add(0,portal);
@@ -395,11 +414,19 @@ public class PortalClass {
 			CustomPortal portal = historyPortals.get(i);
 			portal.addToUsedPortals(p, (i==0)?from:historyPortals.get(i-1).getWorld());
 		}
+		
+	}
+	
+	private boolean containsStartsWith(ArrayList<String> arrayList, String name) {
+		for (String str : arrayList) {
+			if (str.equals(name) || str.startsWith("startsWith:"+name)) return true;
+		}
+		return false;
 	}
 	
 	public void debug(String msg, int lvl) {
 		if (DimensionsSettings.getDebugLevel()>=lvl)
-		System.out.println("[Dimensions Debugger]" + msg);
+		System.out.println("[DimensionsDebugger] " + msg);
 	}
 	
 	public ArrayList<PortalFrame> getAllFrames() {
@@ -508,6 +535,21 @@ public class PortalClass {
 
 	public Object getData(UUID uuid, String data) {
 		return playerData.getData(uuid, data);
+	}
+
+	public CompletePortal getLookingPortal(LivingEntity e) {
+		List<Block> los = e.getLineOfSight(null, 5);
+		for (Block block : los) {
+			if (!Dimensions.isAir(block.getType())) break;
+			CompletePortal compl = getPortalAtLocation(block.getLocation());
+			if (compl!=null) return compl;
+		}
+		return null;
+	}
+
+	public void clearData() {
+		playerData.clear();
+		save();
 	}
 
 }
