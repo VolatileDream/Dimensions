@@ -10,9 +10,9 @@ public class EntityTeleportCustomPortalEvent extends Event implements Cancellabl
     
     private boolean cancelled;
     
-    EntityUseCustomPortalEvent useEvent;
-    Location finalLocation;
-    Location firstLocation;
+    private EntityUseCustomPortalEvent useEvent;
+    private Location finalLocation;
+    private Location firstLocation;
     
     public EntityTeleportCustomPortalEvent(EntityUseCustomPortalEvent useEvent, Location finalLocation, Location firstLocation) {
     	this.useEvent = useEvent;

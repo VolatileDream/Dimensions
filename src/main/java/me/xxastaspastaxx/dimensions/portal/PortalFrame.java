@@ -246,6 +246,7 @@ public class PortalFrame implements Listener {
 			p.sendBlockChange(loc, complete.getPortal().getFrameBlockData(complete.isZAxis()));
 		}
 		shown.add(p);
+		complete.addToShown(p);
 		
 		if (!shown.isEmpty() && (!destroyed && !enabled)) {
 			startTask();
@@ -277,6 +278,7 @@ public class PortalFrame implements Listener {
 			destroyPacket.sendPacket(p);
 		}
 		shown.remove(p);
+		complete.removeFromShown(p);
 		
 		if (shown.isEmpty() && !destroyed && enabled) {
 			Bukkit.getScheduler().cancelTask(task);

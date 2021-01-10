@@ -45,11 +45,15 @@ public class DimensionsSettings {
   	  	consumeItems = portalSettings.getBoolean("ConsumeItems");
   	  	netherPortalEffect = portalSettings.getBoolean("NetherPortalEffect");
   	  	
+  	  	String[] rules = {"forceReturnWorld", "ignoreIrrelevantWorld"};
+  	  	for (String str : rules) {
+  	  		pathRules.put(str, new ArrayList<String>());
+  	  	}
   	  	
   	  	for (String str : portalSettings.getStringList("PathRules")) {
   	  		if (!str.contains(";")) continue;
   	  		String[] spl = str.split(";");
-  	  		if (!pathRules.containsKey(spl[0])) pathRules.put(spl[0], new ArrayList<String>());
+  	  		if (!pathRules.containsKey(spl[0])) continue;
   	  		pathRules.get(spl[0]).add(spl[1]);
   	  	}
 		

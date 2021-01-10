@@ -13,17 +13,17 @@ public class EntityUseCustomPortalEvent extends Event implements Cancellable {
     
     private boolean cancelled;
     
-    Entity entity;
-    CompletePortal complete;
+    private Entity entity;
+    private CompletePortal complete;
     
-    boolean buildExitPortal;
+    private boolean buildExitPortal;
     
-    boolean forceTP;
-    boolean bungee;
+    private boolean forceTP;
+    private boolean bungee;
 
-    Location tpLoc;
-    Location buildLocation;
-    boolean zAxis;
+    private Location tpLoc;
+    private Location buildLocation;
+    private boolean zAxis;
     
     public EntityUseCustomPortalEvent(Entity entity, Location tpLoc, CompletePortal complete, boolean buildExitPortal,boolean forceTP, boolean bungee) {
     	this.entity=entity;

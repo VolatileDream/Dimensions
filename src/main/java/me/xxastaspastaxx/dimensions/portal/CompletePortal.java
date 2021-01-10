@@ -13,9 +13,12 @@ import org.bukkit.Material;
 import org.bukkit.block.data.BlockData;
 import org.bukkit.block.data.Orientable;
 import org.bukkit.entity.Entity;
+import org.bukkit.entity.Player;
 
 import com.comphenix.protocol.utility.MinecraftReflection;
 
+import me.xxastaspastaxx.dimensions.events.EntityStartedViewingCustomPortalEvent;
+import me.xxastaspastaxx.dimensions.events.EntityStoppedViewingCustomPortalEvent;
 import me.xxastaspastaxx.dimensions.utils.Dimensions;
 
 public class CompletePortal {
@@ -38,6 +41,7 @@ public class CompletePortal {
 	
 	private HashMap<Entity,Long> timer = new HashMap<Entity,Long>();
 	private ArrayList<Entity> hold = new ArrayList<Entity>();
+	private ArrayList<Entity> shown = new ArrayList<Entity>();
 
 	private HashMap<String, Object> tags = new HashMap<String, Object>();
 	
@@ -259,5 +263,21 @@ public class CompletePortal {
 	
 	public ArrayList<Entity> getHold() {
 		return hold;
+	}
+
+	public void addToShown(Player p) {
+		if (shown.contains(p)) return;
+		shown.add(p);
+		EntityStartedViewingCustomPortalEvent event = new EntityStartedViewingCustomPortalEvent(this, p);
+		Bukkit.getServer().getPluginManager().callEvent(event);
+		
+	}
+
+	public void removeFromShown(Player p) {
+		if (!shown.contains(p)) return;
+		shown.remove(p);
+		EntityStoppedViewingCustomPortalEvent event = new EntityStoppedViewingCustomPortalEvent(this, p);
+		Bukkit.getServer().getPluginManager().callEvent(event);
+		
 	}
 }

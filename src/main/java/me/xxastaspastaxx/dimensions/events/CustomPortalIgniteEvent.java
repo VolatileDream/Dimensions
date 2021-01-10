@@ -14,10 +14,10 @@ public class CustomPortalIgniteEvent extends Event implements Cancellable {
     
     private boolean cancelled;
     
-    CompletePortal complete;
-    IgniteCause cause;
-    Entity entity;
-    boolean load;
+    private CompletePortal complete;
+    private IgniteCause cause;
+    private Entity entity;
+    private boolean load;
     
     ItemStack lighter;
     
