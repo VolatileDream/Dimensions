@@ -13,17 +13,23 @@ public class CustomPortalDestroyEvent extends Event implements Cancellable {
     private boolean cancelled;
     
     private CompletePortal complete;
+    boolean unload;
     private DestroyCause cause;
     private Entity entity;
     
-    public CustomPortalDestroyEvent(CompletePortal complete, DestroyCause cause, Entity entity) {
+    public CustomPortalDestroyEvent(CompletePortal complete, boolean unload, DestroyCause cause, Entity entity) {
     	this.complete=complete;
+    	this.unload = unload;
     	this.cause = cause;
     	this.entity = entity;
     }
     
     public CompletePortal getPortal() {
     	return complete;
+    }
+    
+    public boolean isUnloading() {
+    	return unload;
     }
     
     public DestroyCause getCause() {

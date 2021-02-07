@@ -8,24 +8,29 @@ import java.io.PrintWriter;
 import java.util.HashMap;
 import java.util.UUID;
 
-import org.json.simple.JSONObject;
-import org.json.simple.parser.JSONParser;
-import org.json.simple.parser.ParseException;
-
 import com.google.gson.Gson;
+import com.google.gson.JsonIOException;
+import com.google.gson.JsonSyntaxException;
+import com.google.gson.reflect.TypeToken;
 
 public class PlayerData {
+
+	private static final double version = 1.0;
 
 	private HashMap<UUID, HashMap<String, Object>> data = new HashMap<UUID, HashMap<String, Object>>();
 	
 	private final String filePath = "./plugins/Dimensions/PlayerData/playerData.json";
+
+	Gson gson;
 	
-	@SuppressWarnings("unchecked")
-	public PlayerData() {
+	public PlayerData(double fileVesrion) {
+
+		gson = new Gson();
 		
 		File file = new File(filePath);
 		if (!file.exists()) {
 			try {
+				file.getParentFile().mkdirs();
 				file.createNewFile();
 			} catch (IOException e1) {
 				e1.printStackTrace();
@@ -33,33 +38,23 @@ public class PlayerData {
 			save();
 		}
 		
-		JSONParser jsonParser = new JSONParser();
-		try {
-			JSONObject jsonObject = (JSONObject) jsonParser.parse(new FileReader(filePath));
-			JSONObject dataObject = (JSONObject) jsonObject.get("loadData");
-
-			((JSONObject) dataObject).keySet().forEach(uuid ->
-	        {
+		if (fileVesrion!=version) {
+			
+		} else {
+			HashMap<String, HashMap<String, Object>> res = new HashMap<String, HashMap<String, Object>>();
+			try {
+				res = gson.fromJson(new FileReader(filePath), new TypeToken<HashMap<String, HashMap<String, Object>>>() {}.getType());
+			} catch (JsonIOException | JsonSyntaxException | FileNotFoundException e) {
+				e.printStackTrace();
+			}
+			
+			for (String uuidString : res.keySet()) {
 	        	HashMap<String, Object> datas = new HashMap<String, Object>();
-	        	
-	            Object stuff = ((JSONObject) dataObject).get(uuid);
-	            if (stuff instanceof JSONObject) {
-	            	((JSONObject) stuff).keySet().forEach(key ->
-	    	        {
-	    	            datas.put(key.toString(), ((JSONObject) stuff).get(key));
-	    	        	
-	    	        });
-	            }
-	            
-            	data.put(UUID.fromString(uuid.toString()), datas);
-	        });
-	        
-		} catch (FileNotFoundException e) {
-			e.printStackTrace();
-		} catch (IOException e) {
-			e.printStackTrace();
-		} catch (ParseException e) {
-			e.printStackTrace();
+				for (String key : res.get(uuidString).keySet()) {
+					datas.put(key, res.get(uuidString).get(key));
+				}
+				data.put(UUID.fromString(uuidString), datas);
+			}
 		}
 	}
 	
@@ -85,7 +80,7 @@ public class PlayerData {
 		
 		try{
 		    PrintWriter writer = new PrintWriter(filePath, "UTF-8");
-		    writer.println("{\"loadData\":"+new Gson().toJson(res)+"}");
+		    writer.println(gson.toJson(res));
 		    writer.close();
 		} catch (IOException e) {
 		}

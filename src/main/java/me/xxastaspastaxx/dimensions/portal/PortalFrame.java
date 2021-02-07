@@ -142,21 +142,23 @@ public class PortalFrame implements Listener {
 				if (shown.size()==0) return;
 				
 
-				loc.getBlock().setType(Material.AIR);
-				if (complete.isEntity) {
-					for (Player p : shown) {
-						p.sendBlockChange(loc, Material.AIR.createBlockData());
-					}
-				} else {
-					for (Player p : shown) {
-						p.sendBlockChange(loc,complete.getPortal().getFrameBlockData(complete.isZAxis()));
+				if (DimensionsSettings.showPortalContent()) {
+					loc.getBlock().setType(Material.AIR);
+					if (complete.isEntity) {
+						for (Player p : shown) {
+							p.sendBlockChange(loc, Material.AIR.createBlockData());
+						}
+					} else {
+						for (Player p : shown) {
+							p.sendBlockChange(loc,complete.getPortal().getFrameBlockData(complete.isZAxis()));
+						}
 					}
 				}
 				
 				for (Entity en : loc.getWorld().getNearbyEntities(fixedLoc, 0.5,0.5,0.5)) {
 					if (!(en instanceof Entity)) continue;
 					if ((!DimensionsSettings.enableMobsTeleportation() && !(en instanceof Player)) || (!DimensionsSettings.enableEntitiesTeleportation() && !(en instanceof LivingEntity))) continue;
-					if (en instanceof Player && DimensionsSettings.enableNetherPortalEffect()) ((Player) en).sendBlockChange(loc, complete.getNetherBlockData());
+					if (DimensionsSettings.showPortalContent() && en instanceof Player && DimensionsSettings.enableNetherPortalEffect()) ((Player) en).sendBlockChange(loc, complete.getNetherBlockData());
 					if (complete.getTimer().containsKey(en) || pc.isOnHold(en)) continue;
 					if (en.getLocation().getBlock().equals(loc.getBlock())) {
 						int extra = 0;
@@ -206,7 +208,7 @@ public class PortalFrame implements Listener {
 					complete.getPortal().spawnParticles(loc);
 				}
 				
-				if (complete.isEntity) {
+				if (DimensionsSettings.showPortalContent() && complete.isEntity) {
 					for (Player p : shown) {
 						metaPacket.sendPacket(p);
 						teleportPacket.sendPacket(p);
@@ -229,7 +231,7 @@ public class PortalFrame implements Listener {
 	}
 	
 	public void summon(Player p) {
-		if (destroyed) return;
+		if (destroyed || spawnPacket==null) return;
 
 		if (p!=null && (shown.contains(p) || !p.getWorld().equals(loc.getWorld()))) return;
 		if (p==null) {
@@ -238,11 +240,11 @@ public class PortalFrame implements Listener {
 			}
 			return;
 		}
-		if (complete.isEntity) {
+		if (DimensionsSettings.showPortalContent() && complete.isEntity) {
 			spawnPacket.sendPacket(p);
 			teleportPacket.sendPacket(p);
 			metaPacket.sendPacket(p);
-		} else {
+		} else if (DimensionsSettings.showPortalContent()) {
 			p.sendBlockChange(loc, complete.getPortal().getFrameBlockData(complete.isZAxis()));
 		}
 		shown.add(p);
@@ -265,6 +267,8 @@ public class PortalFrame implements Listener {
 	}
 	
 	public void remove(Player p) {
+		if (destroyPacket==null) return;
+		
 		if (p==null) {
 			Iterator<Player> shownIter = shown.iterator();
 			while (shownIter.hasNext()) {
@@ -274,7 +278,7 @@ public class PortalFrame implements Listener {
 			}
 			return;
 		}
-		if (complete.isEntity) {
+		if (DimensionsSettings.showPortalContent() && complete.isEntity) {
 			destroyPacket.sendPacket(p);
 		}
 		shown.remove(p);
@@ -285,7 +289,9 @@ public class PortalFrame implements Listener {
 			Bukkit.getScheduler().cancelTask(task2);
 			enabled = false;
 		}
-		p.sendBlockChange(loc, Material.AIR.createBlockData());
+		if (DimensionsSettings.showPortalContent()) {
+			p.sendBlockChange(loc, Material.AIR.createBlockData());
+		}
 	}
 	
 	public void remove(Player p, int x, int z) {

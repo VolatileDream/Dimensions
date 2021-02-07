@@ -28,6 +28,7 @@ import org.bukkit.event.block.BlockIgniteEvent.IgniteCause;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.potion.PotionEffect;
+import org.bukkit.util.Vector;
 
 import me.xxastaspastaxx.dimensions.events.CustomPortalDestroyEvent;
 import me.xxastaspastaxx.dimensions.events.CustomPortalIgniteEvent;
@@ -333,7 +334,7 @@ public class CustomPortal {
 		}
 
 		//if (isHorizontal()) return isHorizontalPortal(loc, checkEmpty, load);
-		Location[] results = new Location[4];
+		Vector[] results = new Vector[4];
 		
 		//Check if there are blocks matching the portal block at up, down , east and west or south and north
 		int up = 0;
@@ -536,11 +537,11 @@ public class CustomPortal {
 		S A F S
 		S S S S */
 		
-		results[0] = min;
-		results[1] = max;
-		results[2] = extraMin;
-		results[3] = extraMax;
-		return Arrays.asList(results, getBlocks(portal), portal);
+		results[0] = min.toVector();
+		results[1] = max.toVector();
+		results[2] = min.add(extraMin).toVector();
+		results[3] = max.add(extraMax).toVector();
+		return Arrays.asList(results, getBlocks(portal), portal, loc.getWorld());
 	}
 	
 	public List<Block> getBlocks(Block[][] portal) {
@@ -605,11 +606,7 @@ public class CustomPortal {
 	public boolean lightPortal(Location loc, IgniteCause cause, Entity igniter, boolean load, ItemStack lighter) {
 		List<Object> portal = isPortal(loc, true, load);
 		if (portal==null) return false;
-			
-		Location[] portalLocations = (Location[]) portal.get(0);
 		
-		Location min = portalLocations[0].clone().add(portalLocations[2]);
-		Location max = portalLocations[1].clone().add(portalLocations[3]);
 		
 		if (getDisabledWorlds().contains(loc.getWorld())) {
 			if (igniter!=null && (igniter instanceof Player)) {
@@ -620,8 +617,14 @@ public class CustomPortal {
 			}
 			return false;
 		}
+
+		World w = (World) portal.get(3);
 		
-		if ((isWorldNeeded() && min.getWorld().equals(getWorld())) && (min.getY()>getWorldHeight() || max.getY()>getWorldHeight())) {
+		Vector[] portalLocations = (Vector[]) portal.get(0);
+		Vector min = portalLocations[2];
+		Vector max = portalLocations[3];
+		
+		if ((isWorldNeeded() && w.equals(getWorld())) && (min.getY()>getWorldHeight() || max.getY()>getWorldHeight())) {
 			if (igniter!=null && (igniter instanceof Player)) {
 				String message = Messages.get("maxHeightExceededDenyMessage");
 				if (!message.equalsIgnoreCase("")) {
@@ -634,9 +637,9 @@ public class CustomPortal {
 		ArrayList<PortalFrame> completeFrames = new ArrayList<PortalFrame>();
 
 		CompletePortal complete = new CompletePortal(this, portal,portalLocations[0].getZ()!=portalLocations[1].getZ());
-		for(int y = (int) Math.min(max.getBlockY(), min.getBlockY()); y <= (int) Math.max(min.getBlockY(), max.getBlockY()); y++) {
-			for(int x = (int) Math.max(max.getBlockX(), min.getBlockX()); x >= (int) Math.min(min.getBlockX(), max.getBlockX()); x--) {
-				for(int z = (int) Math.max(max.getBlockZ(), min.getBlockZ()); z >= (int) Math.min(min.getBlockZ(), max.getBlockZ()); z--) {
+		for(int y = (int) Math.min(max.getY(), min.getY()); y <= (int) Math.max(min.getY(), max.getY()); y++) {
+			for(int x = (int) Math.max(max.getX(), min.getX()); x >= (int) Math.min(min.getX(), max.getX()); x--) {
+				for(int z = (int) Math.max(max.getZ(), min.getZ()); z >= (int) Math.min(min.getZ(), max.getZ()); z--) {
 					Location blockLocation = new Location(loc.getWorld(),x,y,z);
 					completeFrames.add(new PortalFrame(complete, blockLocation));
 				}
@@ -714,10 +717,10 @@ public class CustomPortal {
 	public boolean isZAxis(Location loc) {
 		List<Object> portal = isPortal(loc, false, false);
 		if (portal==null) return false;
-		Location[] portalLocations = (Location[]) portal.get(0);
+		Vector[] portalLocations = (Vector[]) portal.get(0);
 		
-		Location min = portalLocations[0];
-		Location max = portalLocations[1];
+		Vector min = portalLocations[0];
+		Vector max = portalLocations[1];
 		
 		if (min.getZ()!=max.getZ()) {
 			return true;
@@ -726,15 +729,15 @@ public class CustomPortal {
 		}
 	}
 	
-	public boolean destroy(CompletePortal complete, DestroyCause cuase, Entity entity) {
+	public boolean destroy(CompletePortal complete, boolean unload, DestroyCause cuase, Entity entity) {
 		if ((entity instanceof Player) && portalClass.getPlugin().getWorldGuardFlags()!=null && !portalClass.getPlugin().getWorldGuardFlags().testState((Player) entity, complete.getLocation(),WorldGuardFlags.DestroyCustomPortal)) {
 			entity.sendMessage(Messages.get("worldGuardDenyMessage"));
 			return false;
 		}
 		
-		CustomPortalDestroyEvent event = new CustomPortalDestroyEvent(complete, cuase, entity);
+		CustomPortalDestroyEvent event = new CustomPortalDestroyEvent(complete, unload, cuase, entity);
 		Bukkit.getServer().getPluginManager().callEvent(event);
-		if (!event.isCancelled()) {
+		if (!event.isCancelled() || unload) {
 			return complete.destroy(true);
 		}
 		

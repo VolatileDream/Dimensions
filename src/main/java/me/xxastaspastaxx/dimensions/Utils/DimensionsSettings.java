@@ -25,6 +25,7 @@ public class DimensionsSettings {
 	private static int spotSearchRadius;
 	private static boolean consumeItems;
 	private static boolean netherPortalEffect;
+	private static boolean showPortalContent;
 	private static HashMap<String, ArrayList<String>> pathRules = new HashMap<String, ArrayList<String>>();
 	
 	public static boolean reloadSettings() {
@@ -44,6 +45,7 @@ public class DimensionsSettings {
   	  	spotSearchRadius = portalSettings.getInt("SafeSpotSearchRadius");
   	  	consumeItems = portalSettings.getBoolean("ConsumeItems");
   	  	netherPortalEffect = portalSettings.getBoolean("NetherPortalEffect");
+  	  	showPortalContent = portalSettings.getBoolean("ShowPortalContent");
   	  	
   	  	String[] rules = {"forceReturnWorld", "ignoreIrrelevantWorld"};
   	  	for (String str : rules) {
@@ -110,6 +112,10 @@ public class DimensionsSettings {
 
 	public static boolean enableNetherPortalEffect() {
 		return netherPortalEffect;
+	}
+	
+	public static boolean showPortalContent() {
+		return showPortalContent;
 	}
 	
 	public static HashMap<String, ArrayList<String>> getPathRules() {

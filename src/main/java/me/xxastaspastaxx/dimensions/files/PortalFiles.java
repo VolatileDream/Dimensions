@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
@@ -19,6 +20,7 @@ import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.world.WorldSaveEvent;
 
 import me.xxastaspastaxx.dimensions.Main;
+import me.xxastaspastaxx.dimensions.events.DestroyCause;
 import me.xxastaspastaxx.dimensions.portal.CompletePortal;
 import me.xxastaspastaxx.dimensions.portal.CustomPortal;
 import me.xxastaspastaxx.dimensions.portal.PortalClass;
@@ -66,6 +68,7 @@ public class PortalFiles implements Listener {
 		portalSettings.addDefault("SafeSpotSearchRadius", 16);
 		portalSettings.addDefault("ConsumeItems", true);
 		portalSettings.addDefault("NetherPortalEffect", true);
+		portalSettings.addDefault("ShowPortalContent", true);
 		if (portalSettings.getStringList("PathRules").isEmpty()) portalSettings.addDefault("PathRules", new ArrayList<String>());
 		
 		portalSettings.options().copyDefaults(true);
@@ -88,19 +91,20 @@ public class PortalFiles implements Listener {
 		
 		portalListeners = new PortalListeners(pl, portalClass);
 		
-		//TODO
-		portalLocations = new PortalLocations();
-		portalClass.setPortalLocations(portalLocations, portalListeners);
-
-		File fl = new File("./plugins/Dimensions/PlayerData/");
-		if (!fl.exists()) fl.mkdir();
 		
-		playerHistories = new PlayerHistories(portalClass);
-        portalClass.setPlayerHistories(playerHistories);
-        
-		playerData = new PlayerData();
-        portalClass.setPlayerData(playerData);
-
+		
+		//TODO
+		File fileVersions = new File("plugins/Dimensions/versions.yml");
+		YamlConfiguration fileVesionsConfig = YamlConfiguration.loadConfiguration(fileVersions);
+		
+		portalLocations = new PortalLocations(fileVesionsConfig.getDouble("PortalLocations", 1.0));
+		portalClass.setPortalLocations(portalLocations, portalListeners);
+		
+		playerHistories = new PlayerHistories(portalClass, fileVesionsConfig.getDouble("PlayerHistories", 1.0));
+	    portalClass.setPlayerHistories(playerHistories);
+		
+	    playerData = new PlayerData(fileVesionsConfig.getDouble("PlayerData", 1.0));
+	    portalClass.setPlayerData(playerData);
 
 	    Bukkit.getServer().getPluginManager().registerEvents(this, pl);
 	}
@@ -115,8 +119,11 @@ public class PortalFiles implements Listener {
 	
 	public void onDisable() {
 		save();
-		for (PortalFrame frame : portalClass.getAllFrames()) {
-			frame.remove(null);
+		@SuppressWarnings("unchecked")
+		Iterator<CompletePortal> iter = ((ArrayList<CompletePortal>) portalClass.getCompletePortals().clone()).iterator();
+		while (iter.hasNext()) {
+			CompletePortal complete = iter.next();
+			complete.getPortal().destroy(complete, true, DestroyCause.PLUGIN, null);
 		}
 	}
 	
@@ -283,6 +290,7 @@ public class PortalFiles implements Listener {
 	}
 	
 	public boolean reloadAll() {
+		save();
 		return DimensionsSettings.reloadSettings() && reloadPortals() && Messages.reload();
 	}
 	

@@ -11,75 +11,68 @@ import java.util.UUID;
 
 import org.bukkit.Bukkit;
 import org.bukkit.World;
-import org.json.simple.JSONObject;
-import org.json.simple.parser.JSONParser;
-import org.json.simple.parser.ParseException;
 
 import com.google.gson.Gson;
+import com.google.gson.JsonIOException;
+import com.google.gson.JsonSyntaxException;
+import com.google.gson.reflect.TypeToken;
 
 import me.xxastaspastaxx.dimensions.portal.CustomPortal;
 import me.xxastaspastaxx.dimensions.portal.PortalClass;
 
 public class PlayerHistories {
 
+	private static final double version = 1.0;
+	
 	private HashMap<CustomPortal, HashMap<UUID, ArrayList<World>>> histories = new HashMap<CustomPortal, HashMap<UUID, ArrayList<World>>>();
 	
 	private final String filePath = "./plugins/Dimensions/PlayerData/playerHistories.json";
+
+	private Gson gson;
 	
-	@SuppressWarnings("unchecked")
-	public PlayerHistories(PortalClass portalClass) {
+	public PlayerHistories(PortalClass portalClass, double fileVesrion) {
+		
+		gson = new Gson();
 		
 		File file = new File(filePath);
 		if (!file.exists()) {
 			try {
+				file.getParentFile().mkdirs();
 				file.createNewFile();
 			} catch (IOException e1) {
 				e1.printStackTrace();
 			}
 			save();
 		}
-		
-		JSONParser jsonParser = new JSONParser();
-		try {
-			JSONObject jsonObject = (JSONObject) jsonParser.parse(new FileReader(filePath));
-			JSONObject historiesObject = (JSONObject) jsonObject.get("loadHistories");
+
+		if (fileVesrion!=version) {
 			
-	        historiesObject.keySet().forEach(portalName ->
-	        {
-	            Object keyvalue = historiesObject.get(portalName);
-	        	HashMap<UUID, ArrayList<World>> historiesString = new HashMap<UUID, ArrayList<World>>();
-
-	            if (keyvalue instanceof JSONObject) {
-	            	((JSONObject) keyvalue).keySet().forEach(uuid ->
-	    	        {
-		            	ArrayList<World> worlds = new ArrayList<World>();
-		            	
-	    	            Object list = ((JSONObject) keyvalue).get(uuid);
-	    	            if (list instanceof JSONObject) {
-	    	            	((JSONObject) list).keySet().forEach(world ->
-	    	    	        {
-	    	    	            worlds.add(Bukkit.getWorld(world.toString()));
-	    	    	        });
-	    	            }
-
-		            	historiesString.put(UUID.fromString(uuid.toString()), worlds);
-	    	        });
-	            	
-	            }
-				histories.put(portalClass.getPortalFromName(portalName.toString()), historiesString);
-	        });
-	        
-		} catch (FileNotFoundException e) {
-			e.printStackTrace();
-		} catch (IOException e) {
-			e.printStackTrace();
-		} catch (ParseException e) {
-			e.printStackTrace();
+		} else {
+			HashMap<String, HashMap<String, ArrayList<String>>> res = new HashMap<String, HashMap<String, ArrayList<String>>>();
+			try {
+				res = gson.fromJson(new FileReader(filePath), new TypeToken<HashMap<String, HashMap<String, ArrayList<String>>>>() {}.getType());
+			} catch (JsonIOException | JsonSyntaxException | FileNotFoundException e) {
+				e.printStackTrace();
+			}
+			
+			for (String portalString : res.keySet()) {
+				CustomPortal portal = portalClass.getPortalFromName(portalString);
+				HashMap<UUID, ArrayList<World>> worldHistories = new HashMap<UUID, ArrayList<World>>();
+				for (String uuidString : res.get(portalString).keySet()) {
+					ArrayList<World> worlds = new ArrayList<World>();
+					for (String worldString : res.get(portalString).get(uuidString)) {
+						worlds.add(Bukkit.getWorld(worldString));
+					}
+					worldHistories.put(UUID.fromString(uuidString), worlds);
+				}
+				histories.put(portal, worldHistories);
+			}
+			
+			for (CustomPortal portal : portalClass.getPortals()) {
+				if (!histories.containsKey(portal)) histories.put(portal, new HashMap<UUID, ArrayList<World>>());
+			}
 		}
 		
-		for (CustomPortal portal : portalClass.getPortals()) {
-			if (!histories.containsKey(portal)) histories.put(portal, new HashMap<UUID, ArrayList<World>>());
-		}
 	}
 	
 	public HashMap<CustomPortal, HashMap<UUID, ArrayList<World>>> getHistories() { 
@@ -132,7 +125,7 @@ public class PlayerHistories {
 		
 		try{
 		    PrintWriter writer = new PrintWriter(filePath, "UTF-8");
-		    writer.println("{\"loadHistories\":"+new Gson().toJson(res)+"}");
+		    writer.println(gson.toJson(res));
 		    writer.close();
 		} catch (IOException e) {
 		}

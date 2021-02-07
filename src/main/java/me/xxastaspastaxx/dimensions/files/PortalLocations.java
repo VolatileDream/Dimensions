@@ -11,28 +11,34 @@ import java.util.Iterator;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
-import org.json.simple.JSONArray;
-import org.json.simple.JSONObject;
-import org.json.simple.parser.JSONParser;
-import org.json.simple.parser.ParseException;
 
 import com.google.gson.Gson;
+import com.google.gson.JsonIOException;
+import com.google.gson.JsonSyntaxException;
+import com.google.gson.reflect.TypeToken;
 
 import me.xxastaspastaxx.dimensions.portal.CompletePortal;
 import me.xxastaspastaxx.dimensions.portal.CustomPortal;
 import me.xxastaspastaxx.dimensions.portal.PortalFrame;
 
 public class PortalLocations {
+
+	private static final double version = 1.0;
 	
 	private ArrayList<CompletePortal> locations = new ArrayList<CompletePortal>();
 	
 	private final String filePath = "./plugins/Dimensions/Portals/portalLocations.json";
+
+	private Gson gson;
 	
-	public PortalLocations() {
+	public PortalLocations(double fileVesrion) {
+
+		gson = new Gson();
 		
 		File file = new File(filePath);
 		if (!file.exists()) {
 			try {
+				file.getParentFile().mkdirs();
 				file.createNewFile();
 			} catch (IOException e1) {
 				e1.printStackTrace();
@@ -40,24 +46,23 @@ public class PortalLocations {
 			save();
 		}
 		
-		JSONParser jsonParser = new JSONParser();
-		try {
-			JSONObject jsonObject = (JSONObject) jsonParser.parse(new FileReader(filePath));
-	        JSONArray jsonArray = (JSONArray) jsonObject.get("loadLocations");
-	        @SuppressWarnings("unchecked")
-			Iterator<String> iterator = jsonArray.iterator();
-	        while(iterator.hasNext()) {
-	        	CompletePortal compl = CompletePortal.parseCompletePortal(iterator.next());
+		ArrayList<String> portals = null;
+		
+		if (fileVesrion!=version) {
+			
+		} else {
+			try {
+				portals = gson.fromJson(new FileReader(file), new TypeToken<ArrayList<String>>() {}.getType());
+			} catch (JsonIOException | JsonSyntaxException | FileNotFoundException e) {
+				e.printStackTrace();
+			}
+			
+			for (String portal : portals) {
+				CompletePortal compl = CompletePortal.parseCompletePortal(portal);
 	        	if (compl!=null) {
 		        	locations.add(compl);
 	        	}
-	        }
-		} catch (FileNotFoundException e) {
-			e.printStackTrace();
-		} catch (IOException e) {
-			e.printStackTrace();
-		} catch (ParseException e) {
-			e.printStackTrace();
+			}
 		}
 	}
 	
@@ -154,16 +159,10 @@ public class PortalLocations {
 		}
 		try{
 		    PrintWriter writer = new PrintWriter(filePath, "UTF-8");
-		    writer.println("{\"loadLocations\":"+new Gson().toJson(res)+"}");
+		    writer.println(gson.toJson(res));
 		    writer.close();
 		} catch (IOException e) {
 		}
 	}
-	
-	/*public void convertStrings(ArrayList<String> loadLocations) {
-		for (String portalString : loadLocations) {
-			locations.add(CompletePortal.parseCompletePortal(portalString));
-		}
-	}*/
 
 }

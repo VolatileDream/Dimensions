@@ -50,6 +50,14 @@ public class Dimensions {
 		return portalClass.getPortalsInWorld(portal,world);
 	}
 	
+	public static ArrayList<CompletePortal> getCompletePortals(CustomPortal portal) {
+		return portalClass.getCompletePortals(portal);
+	}
+	
+	public static ArrayList<CompletePortal> getCompletePortals() {
+		return portalClass.getCompletePortals();
+	}
+	
 	public static boolean isPortal(Location loc, boolean load) {
 		return portalClass.isPortal(loc,load);
 	}
