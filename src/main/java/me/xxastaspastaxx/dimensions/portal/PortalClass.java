@@ -173,7 +173,7 @@ public class PortalClass {
 		}
 
 		for (CustomPortal portal : portals) {
-			if (!portal.isEnabled() || (lighter!=null && portal.getLighter()!=lighter.getType())) continue; 
+			if (!portal.isEnabled()) continue; 
 			if (portal.lightPortal(loc, cause, entity, false,lighter)) {
 				debug("Portal lit at "+loc,2);
 				return true;

@@ -132,7 +132,7 @@ public class PortalFrame implements Listener {
 	public void startTask() {
 
 		if (!loc.getChunk().isLoaded() || destroyed || Bukkit.getScheduler().isCurrentlyRunning(task) || Bukkit.getScheduler().isCurrentlyRunning(task2) || enabled) return;
-		
+
 		pc.debug("Starting task for portal frame at "+loc, 3);
 		
 		enabled = true;
@@ -231,7 +231,7 @@ public class PortalFrame implements Listener {
 	}
 	
 	public void summon(Player p) {
-		if (destroyed || spawnPacket==null) return;
+		if (destroyed || (complete.isEntity && spawnPacket==null)) return;
 
 		if (p!=null && (shown.contains(p) || !p.getWorld().equals(loc.getWorld()))) return;
 		if (p==null) {
@@ -240,6 +240,7 @@ public class PortalFrame implements Listener {
 			}
 			return;
 		}
+
 		if (DimensionsSettings.showPortalContent() && complete.isEntity) {
 			spawnPacket.sendPacket(p);
 			teleportPacket.sendPacket(p);
@@ -267,7 +268,7 @@ public class PortalFrame implements Listener {
 	}
 	
 	public void remove(Player p) {
-		if (destroyPacket==null) return;
+		if (complete.isEntity && destroyPacket==null) return;
 		
 		if (p==null) {
 			Iterator<Player> shownIter = shown.iterator();

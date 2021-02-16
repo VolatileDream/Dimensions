@@ -862,8 +862,12 @@ public class CustomPortal {
 				            {
 				            	Location blockLocation = new Location(teleportLocation.getWorld(),teleportLocation.getX()+x,teleportLocation.getY()+y,teleportLocation.getZ()+z);
 
-								if (canBuildPortal(blockLocation, zAxis,checkPlatform)) {
-									return blockLocation;
+								try {
+									if (canBuildPortal(blockLocation, zAxis,checkPlatform)) {
+										return blockLocation;
+									}
+								} catch (NullPointerException e) {
+									
 								}
 
 				                switch (d)
