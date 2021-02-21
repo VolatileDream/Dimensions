@@ -1,12 +1,12 @@
 package me.xxastaspastaxx.dimensions.files;
 
-import me.xxastaspastaxx.dimensions.Main;
+import me.xxastaspastaxx.dimensions.Dimensions;
 
 public class Files {
 	
 	public PortalFiles portalFiles;
 	
-	public Files(Main pl) {
+	public Files(Dimensions pl) {
 		portalFiles = new PortalFiles(pl);
 	}
 	

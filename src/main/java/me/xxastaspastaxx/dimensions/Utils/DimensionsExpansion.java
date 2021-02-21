@@ -3,13 +3,15 @@ package me.xxastaspastaxx.dimensions.utils;
 import org.bukkit.entity.Player;
 
 import me.clip.placeholderapi.expansion.PlaceholderExpansion;
-import me.xxastaspastaxx.dimensions.Main;
+import me.xxastaspastaxx.dimensions.Dimensions;
 import me.xxastaspastaxx.dimensions.portal.CompletePortal;
 import me.xxastaspastaxx.dimensions.portal.CustomPortal;
+import me.xxastaspastaxx.dimensions.portal.PortalClass;
 
 public class DimensionsExpansion extends PlaceholderExpansion {
 
-    private Main plugin;
+    private Dimensions plugin;
+    private PortalClass portalClass;
 
     /**
      * Since we register the expansion inside our own plugin, we
@@ -19,8 +21,9 @@ public class DimensionsExpansion extends PlaceholderExpansion {
      * @param plugin
      *        The instance of our plugin.
      */
-    public DimensionsExpansion(Main plugin){
+    public DimensionsExpansion(Dimensions plugin){
         this.plugin = plugin;
+        this.portalClass = Dimensions.portalClass;
     }
 
     /**
@@ -116,9 +119,9 @@ public class DimensionsExpansion extends PlaceholderExpansion {
     	if (identifier.startsWith(subIdentifier)) {
     		subIdentifier = identifier.substring(subIdentifier.length());
     		String res = null;
-    		for (CustomPortal portal : Dimensions.getPortals()) {
+    		for (CustomPortal portal : portalClass.getPortals()) {
     			if (!subIdentifier.startsWith(portal.getName())) continue;
-    			res = (String) Dimensions.getPortalConfiguration(portal).get(subIdentifier.substring(portal.getName().length()), "null");
+    			res = (String) DimensionsUtils.getPortalConfiguration(portal).get(subIdentifier.substring(portal.getName().length()), "null");
     			break;
     		}
     		if (res!=null) return res;
@@ -131,28 +134,28 @@ public class DimensionsExpansion extends PlaceholderExpansion {
     		
     		if (args[0].equalsIgnoreCase("isInPortal")) {
     			if (args.length>1) {
-    				CustomPortal portal = Dimensions.getPortalFromName(args[1]);
+    				CustomPortal portal = portalClass.getPortalFromName(args[1]);
     				if (portal!=null) {
-    					for (CompletePortal complete : Dimensions.getPortalsVisibleFromPlayer(p)) {
+    					for (CompletePortal complete : portalClass.getPortalsVisibleFromPlayer(p)) {
     						if (!complete.getPortal().equals(portal)) continue;
     						if (complete.isOnHold(p)) return "true";
     					}
     				}
 					return "false";
     			} else {
-    				return Dimensions.isOnHold(p)+"";
+    				return portalClass.isOnHold(p)+"";
     			}
     		} else if (args[0].equalsIgnoreCase("getPortal")) {
-    			for (CompletePortal complete : Dimensions.getPortalsVisibleFromPlayer(p)) {
+    			for (CompletePortal complete : portalClass.getPortalsVisibleFromPlayer(p)) {
 					if (complete.isOnHold(p)) return complete.getPortal().getDisplayName();
 				}
     		} else if (args[0].equalsIgnoreCase("isPortalZAxis")) {
-    			for (CompletePortal complete : Dimensions.getPortalsVisibleFromPlayer(p)) {
+    			for (CompletePortal complete : portalClass.getPortalsVisibleFromPlayer(p)) {
 					if (complete.isOnHold(p)) return complete.isZAxis()+"";
 				}
     			return "false";
     		} else if (args[0].equalsIgnoreCase("getReturnWorld") && args.length>1) {
-    			CustomPortal portal = Dimensions.getPortalFromName(args[1]);
+    			CustomPortal portal = portalClass.getPortalFromName(args[1]);
 				if (portal!=null) {
 					return portal.getReturnWorld(p, p.getWorld(), false, true).getName();
 				}

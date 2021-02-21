@@ -26,13 +26,13 @@ import com.comphenix.protocol.events.PacketAdapter;
 import com.comphenix.protocol.events.PacketEvent;
 import com.comphenix.protocol.events.PacketListener;
 
-import me.xxastaspastaxx.dimensions.Main;
+import me.xxastaspastaxx.dimensions.Dimensions;
 import me.xxastaspastaxx.dimensions.files.PlayerData;
 import me.xxastaspastaxx.dimensions.files.PlayerHistories;
 import me.xxastaspastaxx.dimensions.files.PortalLocations;
 import me.xxastaspastaxx.dimensions.portal.listeners.PortalListeners;
-import me.xxastaspastaxx.dimensions.utils.Dimensions;
 import me.xxastaspastaxx.dimensions.utils.DimensionsSettings;
+import me.xxastaspastaxx.dimensions.utils.DimensionsUtils;
 import me.xxastaspastaxx.dimensions.utils.Messages;
 
 
@@ -52,17 +52,17 @@ public class PortalClass {
 	ArrayList<CustomPortal> portals = new ArrayList<CustomPortal>();
 	ArrayList<CompletePortal> completePortals = new ArrayList<CompletePortal>();
 	
-	Main pl;
+	Dimensions pl;
 	
 	ArrayList<Entity> hold = new ArrayList<Entity>();
 	
-	public PortalClass(Main pl) {
+	public PortalClass(Dimensions pl) {
 		this.pl = pl;
 		
 		Dimensions.portalClass = this;
 	}
 	
-	public Main getPlugin() {
+	public Dimensions getPlugin() {
 		return pl;
 	}
 	
@@ -107,7 +107,7 @@ public class PortalClass {
 		for (CustomPortal portal : portals) {
 			if (!portal.isEnabled()) continue;
 			if (portal.getMaterial()==Material.OBSIDIAN) {
-				if (portal.getFrame()==Material.NETHER_PORTAL && portal.getWorld().getName().contentEquals("world_nether")) {
+				if (portal.getFrame()==Material.NETHER_PORTAL && portal.getWorld().equals(Bukkit.getServer().getWorlds().get(1))) {
 					allowNetherPortal = false;
 				}
 			}
@@ -166,7 +166,7 @@ public class PortalClass {
 		
 		
 		debug("Attempting to light a portal at "+loc,2);
-		if ((entity instanceof Player) && pl.getWorldGuardFlags()!=null && !pl.getWorldGuardFlags().testState((Player) entity, loc,WorldGuardFlags.IgniteCustomPortal)) {
+		if ((entity instanceof Player) && !DimensionsUtils.testState((Player) entity, loc,WorldGuardFlags.IgniteCustomPortal)) {
 			entity.sendMessage(Messages.get("worldGuardDenyMessage"));
 			debug("Player does not have permission to light a portal at current location",2);
 			return false;
@@ -496,7 +496,7 @@ public class PortalClass {
 	}
 	
 	public void save() {
-		Main.getInstance().files.portalFiles.save();
+		Dimensions.getInstance().files.portalFiles.save();
 	}
 
 	public ArrayList<PortalFrame> getFrames(CustomPortal customPortal) {
@@ -540,7 +540,7 @@ public class PortalClass {
 	public CompletePortal getLookingPortal(LivingEntity e) {
 		List<Block> los = e.getLineOfSight(null, 5);
 		for (Block block : los) {
-			if (!Dimensions.isAir(block.getType())) break;
+			if (!DimensionsUtils.isAir(block.getType())) break;
 			CompletePortal compl = getPortalAtLocation(block.getLocation());
 			if (compl!=null) return compl;
 		}

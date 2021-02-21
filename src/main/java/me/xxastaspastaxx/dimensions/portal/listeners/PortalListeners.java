@@ -50,8 +50,8 @@ import org.bukkit.plugin.Plugin;
 import me.xxastaspastaxx.dimensions.events.DestroyCause;
 import me.xxastaspastaxx.dimensions.portal.CompletePortal;
 import me.xxastaspastaxx.dimensions.portal.PortalClass;
-import me.xxastaspastaxx.dimensions.utils.Dimensions;
 import me.xxastaspastaxx.dimensions.utils.DimensionsSettings;
+import me.xxastaspastaxx.dimensions.utils.DimensionsUtils;
 
 public class PortalListeners implements Listener {
 	
@@ -127,7 +127,7 @@ public class PortalListeners implements Listener {
 			try {
 				List<Block> los = p.getLineOfSight(null, 5);
 				for (Block block : los) {
-					if (!Dimensions.isAir(block.getType()) && !portalClass.getFrameMaterials().contains(block.getType())) break;
+					if (!DimensionsUtils.isAir(block.getType()) && !portalClass.getFrameMaterials().contains(block.getType())) break;
 					CompletePortal portal = portalClass.getPortalAtLocation(block.getLocation());
 					if (portal!=null) {
 						portal.getPortal().destroy(portal, true, DestroyCause.PLAYER_FRAME, p);

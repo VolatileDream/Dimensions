@@ -30,13 +30,14 @@ import org.bukkit.plugin.Plugin;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.util.Vector;
 
+import me.xxastaspastaxx.dimensions.Dimensions;
 import me.xxastaspastaxx.dimensions.events.CustomPortalDestroyEvent;
 import me.xxastaspastaxx.dimensions.events.CustomPortalIgniteEvent;
 import me.xxastaspastaxx.dimensions.events.DestroyCause;
 import me.xxastaspastaxx.dimensions.events.EntityTeleportCustomPortalEvent;
 import me.xxastaspastaxx.dimensions.events.EntityUseCustomPortalEvent;
-import me.xxastaspastaxx.dimensions.utils.Dimensions;
 import me.xxastaspastaxx.dimensions.utils.DimensionsSettings;
+import me.xxastaspastaxx.dimensions.utils.DimensionsUtils;
 import me.xxastaspastaxx.dimensions.utils.Messages;
 
 public class CustomPortal {
@@ -283,12 +284,12 @@ public class CustomPortal {
 	}
 	
 	public long getEntityDelay() {
-		return Dimensions.getRandom(spawningDelay[0],spawningDelay[1]);
+		return DimensionsUtils.getRandom(spawningDelay[0],spawningDelay[1]);
 	}
 	
 	public EntityType getEntitySpawn() {
 		for (EntityType type : entitySpawning.keySet()) {
-			if (Dimensions.getRandom(1,100)<=entitySpawning.get(type)) {
+			if (DimensionsUtils.getRandom(1,100)<=entitySpawning.get(type)) {
 				return type;
 			}
 		}
@@ -571,7 +572,7 @@ public class CustomPortal {
 				if ((side==0 || side==portal[0].length-1) && !isPortalBlock(portal[y][side])) return false;
 				
 				//is it empty inside?
-				if (checkEmpty && (y>0 && y<portal.length-1 && side>0 && side<portal[0].length-1) && (!load && (!Dimensions.isAir(portal[y][side].getType()) || portalClass.getPortalAtLocation(portal[y][side].getLocation())!=null))) return false;
+				if (checkEmpty && (y>0 && y<portal.length-1 && side>0 && side<portal[0].length-1) && (!load && (!DimensionsUtils.isAir(portal[y][side].getType()) || portalClass.getPortalAtLocation(portal[y][side].getLocation())!=null))) return false;
 			}
 		}
 		
@@ -730,7 +731,7 @@ public class CustomPortal {
 	}
 	
 	public boolean destroy(CompletePortal complete, boolean unload, DestroyCause cuase, Entity entity) {
-		if ((entity instanceof Player) && portalClass.getPlugin().getWorldGuardFlags()!=null && !portalClass.getPlugin().getWorldGuardFlags().testState((Player) entity, complete.getLocation(),WorldGuardFlags.DestroyCustomPortal)) {
+		if ((entity instanceof Player) && !Dimensions.getWorldGuardFlags().testState((Player) entity, complete.getLocation(),WorldGuardFlags.DestroyCustomPortal)) {
 			entity.sendMessage(Messages.get("worldGuardDenyMessage"));
 			return false;
 		}
@@ -751,7 +752,7 @@ public class CustomPortal {
 		Location loc = event.getLocation();
 		Location teleportLocation;
 
-		if (getWorldHeight()>0) loc.setY(loc.getY()/(256/getWorldHeight()));
+		if (getWorldHeight()>0) loc.setY(loc.getY()*getWorldHeight()/256);
 		if (isWorldNeeded() && loc.getWorld().equals(getWorld()) && loc.getY()+4>getWorldHeight()) loc.setY(getWorldHeight()-4);
 		
 		
@@ -767,7 +768,7 @@ public class CustomPortal {
 		}
 		
 		
-		if ((p instanceof Player) && portalClass.pl.getWorldGuardFlags()!=null && !portalClass.pl.getWorldGuardFlags().testState((Player) p, loc,WorldGuardFlags.UseCustomPortal)) {
+		if ((p instanceof Player) && !DimensionsUtils.testState((Player) p, loc,WorldGuardFlags.UseCustomPortal)) {
 			p.sendMessage(Messages.get("worldGuardDenyMessage"));
 			return null;
 		}
@@ -803,7 +804,7 @@ public class CustomPortal {
 			foundLocation = true;
 		} else {
 			while (!foundLocation && teleportLocation.getY()<teleportLocation.getWorld().getHighestBlockYAt(teleportLocation)) {
-				while (!Dimensions.isAir(teleportLocation.getBlock().getRelative(BlockFace.UP).getType()) && teleportLocation.getY()<teleportLocation.getWorld().getHighestBlockYAt(teleportLocation)) teleportLocation.add(0,1,0);
+				while (!DimensionsUtils.isAir(teleportLocation.getBlock().getRelative(BlockFace.UP).getType()) && teleportLocation.getY()<teleportLocation.getWorld().getHighestBlockYAt(teleportLocation)) teleportLocation.add(0,1,0);
 				tempLoc = spiralSearch(teleportLocation, zAxis, true);
 				if (tempLoc==null) spiralSearch(teleportLocation, zAxis,false);
 				if (tempLoc!=null) {
@@ -816,7 +817,7 @@ public class CustomPortal {
 		}
 		
 		if (!foundLocation) {
-			while (Dimensions.isAir(teleportLocation.getBlock().getRelative(BlockFace.DOWN).getType()) && teleportLocation.getY()>=1) teleportLocation.add(0,-1,0);
+			while (DimensionsUtils.isAir(teleportLocation.getBlock().getRelative(BlockFace.DOWN).getType()) && teleportLocation.getY()>=1) teleportLocation.add(0,-1,0);
 			tempLoc = spiralSearch(teleportLocation, zAxis,true);
 			if (tempLoc==null) spiralSearch(teleportLocation, zAxis,false);
 			if (tempLoc!=null) {
@@ -952,7 +953,7 @@ public class CustomPortal {
 	}
 	
 	public boolean usePortal(CompletePortal complete, Entity p, boolean forceTP, World fromWorld, boolean bungee) {
-		if (!forceTP && ((p instanceof Player) && portalClass.getPlugin().getWorldGuardFlags()!=null && !portalClass.getPlugin().getWorldGuardFlags().testState((Player) p, p.getLocation(),WorldGuardFlags.UseCustomPortal))) {
+		if (!forceTP && ((p instanceof Player) && !DimensionsUtils.testState((Player) p, p.getLocation(),WorldGuardFlags.UseCustomPortal))) {
 			p.sendMessage(Messages.get("worldGuardDenyMessage"));
 			return false;
 		}
@@ -1117,7 +1118,7 @@ public class CustomPortal {
 			portalClass.addPortal(complete);
 		} else {
 			
-			if (teleportLocation.getBlock().getRelative(BlockFace.DOWN).getType()==Material.WATER || teleportLocation.getBlock().getRelative(BlockFace.DOWN).getType()==Material.LAVA || Dimensions.isAir(teleportLocation.getBlock().getRelative(BlockFace.DOWN).getType())) 
+			if (teleportLocation.getBlock().getRelative(BlockFace.DOWN).getType()==Material.WATER || teleportLocation.getBlock().getRelative(BlockFace.DOWN).getType()==Material.LAVA || DimensionsUtils.isAir(teleportLocation.getBlock().getRelative(BlockFace.DOWN).getType())) 
 				setBlock(teleportLocation.getBlock().getRelative(BlockFace.DOWN));
 		}
 

@@ -13,7 +13,7 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
 
-import me.xxastaspastaxx.dimensions.Main;
+import me.xxastaspastaxx.dimensions.Dimensions;
 import me.xxastaspastaxx.dimensions.portal.CompletePortal;
 import me.xxastaspastaxx.dimensions.portal.CustomPortal;
 import me.xxastaspastaxx.dimensions.portal.PortalClass;
@@ -160,7 +160,7 @@ public class DimensionsCommands implements CommandExecutor {
 			
 			if (args[0].equalsIgnoreCase("reload") && args.length==1) {
 				try {
-					Main.getInstance().files.reload();
+					Dimensions.getInstance().files.reload();
 					reloadDimensionsAddons();
 					p.sendMessage(prefix+"§aSuccesfully reloaded files.");
 				} catch (Exception e) {
@@ -449,5 +449,5 @@ public class DimensionsCommands implements CommandExecutor {
 	    return true;
 	  }
 	  
-	  //ΙΩΑΝΝΑ ΣΕ ΑΓΑΠΆΩ!
+	  //Î™Î©Î‘Î�Î�Î‘ Î£Î• Î‘Î“Î‘Î Î†Î©!
 }

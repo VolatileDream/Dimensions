@@ -17,9 +17,9 @@ import org.bukkit.entity.Player;
 
 import com.comphenix.protocol.utility.MinecraftReflection;
 
+import me.xxastaspastaxx.dimensions.Dimensions;
 import me.xxastaspastaxx.dimensions.events.EntityStartedViewingCustomPortalEvent;
 import me.xxastaspastaxx.dimensions.events.EntityStoppedViewingCustomPortalEvent;
-import me.xxastaspastaxx.dimensions.utils.Dimensions;
 
 public class CompletePortal {
 
@@ -172,7 +172,7 @@ public class CompletePortal {
 	
 	public static CompletePortal parseCompletePortal(String str) {
 		String[] spl = str.split(";");
-		CustomPortal portal = Dimensions.getPortalFromName(spl[0]);
+		CustomPortal portal = Dimensions.portalClass.getPortalFromName(spl[0]);
 		boolean zAxis = Boolean.parseBoolean(spl[1]);
 		String worldName = spl[2];
 		

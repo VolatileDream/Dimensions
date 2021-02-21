@@ -13,16 +13,19 @@ import com.sk89q.worldguard.bukkit.WorldGuardPlugin;
 import me.xxastaspastaxx.dimensions.commands.DimensionsCommands;
 import me.xxastaspastaxx.dimensions.files.Files;
 import me.xxastaspastaxx.dimensions.portal.CustomPortal;
+import me.xxastaspastaxx.dimensions.portal.PortalClass;
 import me.xxastaspastaxx.dimensions.portal.WorldGuardFlags;
 import me.xxastaspastaxx.dimensions.utils.DimensionsExpansion;
 import me.xxastaspastaxx.dimensions.utils.Messages;
 import me.xxastaspastaxx.dimensions.utils.Metrics;
 	
-public class Main extends JavaPlugin {
+public class Dimensions extends JavaPlugin {
 	
 	public Files files;	
 
-	WorldGuardFlags worldGuardFlags;
+	static WorldGuardFlags worldGuardFlags;
+	
+	public static PortalClass portalClass;
 	
 	public void onEnable() {
 		
@@ -95,16 +98,20 @@ public class Main extends JavaPlugin {
 	    }
 	}
 	
-	public WorldGuardFlags getWorldGuardFlags() {
+	public static WorldGuardFlags getWorldGuardFlags() {
 		return worldGuardFlags;
+	}
+	
+	public static void debug(String msg, int lvl) {
+		portalClass.debug(msg, lvl);
 	}
 	
 	public void onDisable() {
 		if (files!=null) files.onDisable();
 	}
 	
-	private static Main instance;
-	public static Main getInstance() {
+	private static Dimensions instance;
+	public static Dimensions getInstance() {
 	  return instance;
 	}
 	

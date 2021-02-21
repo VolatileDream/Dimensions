@@ -19,14 +19,13 @@ import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.world.WorldSaveEvent;
 
-import me.xxastaspastaxx.dimensions.Main;
+import me.xxastaspastaxx.dimensions.Dimensions;
 import me.xxastaspastaxx.dimensions.events.DestroyCause;
 import me.xxastaspastaxx.dimensions.portal.CompletePortal;
 import me.xxastaspastaxx.dimensions.portal.CustomPortal;
 import me.xxastaspastaxx.dimensions.portal.PortalClass;
 import me.xxastaspastaxx.dimensions.portal.PortalFrame;
 import me.xxastaspastaxx.dimensions.portal.listeners.PortalListeners;
-import me.xxastaspastaxx.dimensions.utils.Dimensions;
 import me.xxastaspastaxx.dimensions.utils.DimensionsSettings;
 import me.xxastaspastaxx.dimensions.utils.Messages;
 
@@ -45,9 +44,9 @@ public class PortalFiles implements Listener {
   	public static ArrayList<Material> frameMaterials = new ArrayList<Material>();
   	public static ArrayList<Material> blocks = new ArrayList<Material>();
 	
-  	private Main plugin;
+  	private Dimensions plugin;
 	
-	public PortalFiles(Main pl) {
+	public PortalFiles(Dimensions pl) {
 		
 		plugin = pl;
 	  	
@@ -217,15 +216,15 @@ public class PortalFiles implements Listener {
 					if (DimensionsSettings.isGenerateWorlds()) {
 						world = Bukkit.getServer().createWorld(new WorldCreator(worldName));
 					} else {
-						Dimensions.debug("Disabling portal: "+name, 0);
-						Dimensions.debug("Reason: There is no world "+worldName+" and \"GenerateNewWorlds\" is set to \"false\"", 0);
+						portalClass.debug("Disabling portal: "+name, 0);
+						portalClass.debug("Reason: There is no world "+worldName+" and \"GenerateNewWorlds\" is set to \"false\"", 0);
 						enabled = false;
 						continue;
 					}
 				}
 				if (world.equals(DimensionsSettings.getDefaultWorld())) {
-					Dimensions.debug("Disabling portal: "+name, 0);
-					Dimensions.debug("Reason: There cannot be a portal that leads to the default world", 0);
+					portalClass.debug("Disabling portal: "+name, 0);
+					portalClass.debug("Reason: There cannot be a portal that leads to the default world", 0);
 					enabled = false;
 					continue;
 				}

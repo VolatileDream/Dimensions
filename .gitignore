@@ -2,3 +2,6 @@
 plugin.yml
 plugin.yml
 .project
+.settings/org.eclipse.jdt.core.prefs
+.classpath
+.settings/org.eclipse.core.resources.prefs
