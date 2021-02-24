@@ -130,7 +130,7 @@ public class PortalListeners implements Listener {
 					if (!DimensionsUtils.isAir(block.getType()) && !portalClass.getFrameMaterials().contains(block.getType())) break;
 					CompletePortal portal = portalClass.getPortalAtLocation(block.getLocation());
 					if (portal!=null) {
-						portal.getPortal().destroy(portal, true, DestroyCause.PLAYER_FRAME, p);
+						portal.getPortal().destroy(portal, false, DestroyCause.PLAYER_FRAME, p);
 					}
 				}
 			} catch (IllegalStateException ex) {}
@@ -168,7 +168,7 @@ public class PortalListeners implements Listener {
 			if (exploder.getWorld()!=loc.getWorld() || exploder.getLocation().distance(loc)>e.getRadius()+2) continue;
 			CompletePortal portal = portalClass.getPortalAtLocation(loc);
 			if (portal!=null) {
-				if (!portal.getPortal().destroy(portal, true, DestroyCause.ENTITY, (exploder instanceof LivingEntity)?(LivingEntity) exploder:null)) {
+				if (!portal.getPortal().destroy(portal, false, DestroyCause.ENTITY, (exploder instanceof LivingEntity)?(LivingEntity) exploder:null)) {
 					e.setCancelled(true);
 				}
 			}

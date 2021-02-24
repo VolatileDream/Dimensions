@@ -71,15 +71,17 @@ public class WorldGuardFlags {
     	worldGuard = WorldGuard.getInstance().getPlatform();
 	}
 	
-	public boolean testState(Player p, Location loc, StateFlag flag) {
-		if (!enabled) return true;
+	public boolean testState(Player p, Location loc, Object flag) {
+		if (!enabled || !(flag instanceof StateFlag)) return true;
+		
+		
 		
         RegionContainer container = worldGuard.getRegionContainer();
         RegionQuery query = container.createQuery();
         ApplicableRegionSet set = query.getApplicableRegions(BukkitAdapter.adapt(loc));
         
         LocalPlayer localPlayer = WorldGuardPlugin.inst().wrapPlayer(p);
-        State ignite = set.queryValue(localPlayer, flag);
+        State ignite = set.queryValue(localPlayer, (StateFlag) flag);
         
         return ignite==State.ALLOW || worldGuard.getSessionManager().hasBypass(localPlayer, localPlayer.getWorld());
 	}

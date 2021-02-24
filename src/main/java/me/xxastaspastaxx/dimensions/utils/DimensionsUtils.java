@@ -7,8 +7,6 @@ import org.bukkit.Material;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 
-import com.sk89q.worldguard.protection.flags.StateFlag;
-
 import me.xxastaspastaxx.dimensions.Dimensions;
 import me.xxastaspastaxx.dimensions.portal.CustomPortal;
 
@@ -34,7 +32,7 @@ public class DimensionsUtils {
 		return Dimensions.getWorldGuardFlags()!=null;
 	}
 	
-	public static boolean testState(Player p, Location loc, StateFlag flag) {
+	public static boolean testState(Player p, Location loc, Object flag) {
 		return isWorldGuardEnabled() && Dimensions.getWorldGuardFlags().testState(p, loc, flag);
 	}
 	

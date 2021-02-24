@@ -166,7 +166,7 @@ public class PortalClass {
 		
 		
 		debug("Attempting to light a portal at "+loc,2);
-		if ((entity instanceof Player) && !DimensionsUtils.testState((Player) entity, loc,WorldGuardFlags.IgniteCustomPortal)) {
+		if ((entity instanceof Player) && DimensionsUtils.isWorldGuardEnabled() && !DimensionsUtils.testState((Player) entity, loc,WorldGuardFlags.IgniteCustomPortal)) {
 			entity.sendMessage(Messages.get("worldGuardDenyMessage"));
 			debug("Player does not have permission to light a portal at current location",2);
 			return false;
@@ -391,11 +391,12 @@ public class PortalClass {
 		historyPortals.add(head);
 		
 		found = false;
+		int attempts = 0;
 		while (!found) {
+			debug("Attempt: "+attempts, 0);
 			boolean noPortal = true;
 			for (CustomPortal portal : portals) {
-				if (!portal.isWorldNeeded()) continue;
-				if (portal.equals(head)) continue;
+				if (!portal.isWorldNeeded() || portal.equals(head)) continue;
 				if (!head.getDisabledWorlds().contains(portal.getWorld())) {
 					historyPortals.add(0,portal);
 					head = portal;
@@ -403,10 +404,9 @@ public class PortalClass {
 					if (!head.getDisabledWorlds().contains(from)) found = true;
 					break;
 				}
-
 			}
 			
-			if (noPortal) return;
+			if (noPortal || attempts++>=15) return;
 		}
 		
 		
@@ -424,7 +424,7 @@ public class PortalClass {
 		return false;
 	}
 	
-	public void debug(String msg, int lvl) {
+	public void debug(Object msg, int lvl) {
 		if (DimensionsSettings.getDebugLevel()>=lvl)
 		System.out.println("[DimensionsDebugger] " + msg);
 	}

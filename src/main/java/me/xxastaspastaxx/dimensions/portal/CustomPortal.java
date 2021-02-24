@@ -731,7 +731,7 @@ public class CustomPortal {
 	}
 	
 	public boolean destroy(CompletePortal complete, boolean unload, DestroyCause cuase, Entity entity) {
-		if ((entity instanceof Player) && !Dimensions.getWorldGuardFlags().testState((Player) entity, complete.getLocation(),WorldGuardFlags.DestroyCustomPortal)) {
+		if ((entity instanceof Player) && DimensionsUtils.isWorldGuardEnabled() && !Dimensions.getWorldGuardFlags().testState((Player) entity, complete.getLocation(),WorldGuardFlags.DestroyCustomPortal)) {
 			entity.sendMessage(Messages.get("worldGuardDenyMessage"));
 			return false;
 		}
@@ -739,7 +739,7 @@ public class CustomPortal {
 		CustomPortalDestroyEvent event = new CustomPortalDestroyEvent(complete, unload, cuase, entity);
 		Bukkit.getServer().getPluginManager().callEvent(event);
 		if (!event.isCancelled() || unload) {
-			return complete.destroy(true);
+			return complete.destroy(!unload);
 		}
 		
 		return false;
@@ -768,7 +768,7 @@ public class CustomPortal {
 		}
 		
 		
-		if ((p instanceof Player) && !DimensionsUtils.testState((Player) p, loc,WorldGuardFlags.UseCustomPortal)) {
+		if ((p instanceof Player) && DimensionsUtils.isWorldGuardEnabled() && !DimensionsUtils.testState((Player) p, loc,WorldGuardFlags.UseCustomPortal)) {
 			p.sendMessage(Messages.get("worldGuardDenyMessage"));
 			return null;
 		}
@@ -953,7 +953,7 @@ public class CustomPortal {
 	}
 	
 	public boolean usePortal(CompletePortal complete, Entity p, boolean forceTP, World fromWorld, boolean bungee) {
-		if (!forceTP && ((p instanceof Player) && !DimensionsUtils.testState((Player) p, p.getLocation(),WorldGuardFlags.UseCustomPortal))) {
+		if (!forceTP && ((p instanceof Player) && DimensionsUtils.isWorldGuardEnabled() && !DimensionsUtils.testState((Player) p, p.getLocation(),WorldGuardFlags.UseCustomPortal))) {
 			p.sendMessage(Messages.get("worldGuardDenyMessage"));
 			return false;
 		}
