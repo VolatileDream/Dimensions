@@ -10,10 +10,12 @@ import org.bukkit.Axis;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.World;
 import org.bukkit.block.data.BlockData;
 import org.bukkit.block.data.Orientable;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
+import org.bukkit.util.Vector;
 
 import com.comphenix.protocol.utility.MinecraftReflection;
 
@@ -279,5 +281,21 @@ public class CompletePortal {
 		EntityStoppedViewingCustomPortalEvent event = new EntityStoppedViewingCustomPortalEvent(this, p);
 		Bukkit.getServer().getPluginManager().callEvent(event);
 		
+	}
+
+	public Location getCenterBottomLocation() {
+		
+		//array = [min, max, minExtra, maxExtra]
+		//no extra is location starting from min block to max block
+		//extra is inside from min to inside frame max
+		Vector[] arr = (Vector[]) getPortalInfo().get(0);
+		
+		Vector min = arr[0];
+		Vector max = arr[1];
+		
+		Location res = new Location((World) getPortalInfo().get(3), (min.getX()+max.getX())/2,Math.min(min.getY(), max.getY()),(min.getZ()+max.getZ())/2);
+		res.add(0.5f,0,0.5f);
+
+		return res;
 	}
 }

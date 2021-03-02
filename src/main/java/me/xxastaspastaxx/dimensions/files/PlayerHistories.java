@@ -61,7 +61,8 @@ public class PlayerHistories {
 				for (String uuidString : res.get(portalString).keySet()) {
 					ArrayList<World> worlds = new ArrayList<World>();
 					for (String worldString : res.get(portalString).get(uuidString)) {
-						worlds.add(Bukkit.getWorld(worldString));
+						World world = Bukkit.getWorld(worldString);
+						if (world!=null) worlds.add(world);
 					}
 					worldHistories.put(UUID.fromString(uuidString), worlds);
 				}

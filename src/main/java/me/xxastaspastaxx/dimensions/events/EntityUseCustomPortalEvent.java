@@ -81,6 +81,14 @@ public class EntityUseCustomPortalEvent extends Event implements Cancellable {
     public void setCancelled(boolean cancel) {
         cancelled = cancel;
     }
+    
+    public boolean isZAxis() {
+        return zAxis;
+    }
+
+    public void setZAxis(boolean zAxis) {
+    	this.zAxis = zAxis;
+    }
 
     public HandlerList getHandlers() {
         return handlers;
@@ -89,12 +97,4 @@ public class EntityUseCustomPortalEvent extends Event implements Cancellable {
     public static HandlerList getHandlerList() {
         return handlers;
     }
-
-	public boolean getZaxis() {
-		return zAxis;
-	}
-	
-	public void setZaxis(boolean zAxis) {
-		this.zAxis = zAxis;
-	}
 }

@@ -650,6 +650,7 @@ public class CustomPortal {
 			
 		CustomPortalIgniteEvent event = new CustomPortalIgniteEvent(complete, cause, igniter, load, lighter);
 		Bukkit.getServer().getPluginManager().callEvent(event);
+		if (lighter.getType()!=this.lighter) event.setCancelled(true);
 		if (!event.isCancelled()) {
 			
 			for (PortalFrame frame : complete.getFrames()) {
@@ -788,12 +789,12 @@ public class CustomPortal {
 			nearestLocation.setPitch(loc.getPitch());
 			if (nearestLocation.getBlock().getRelative(BlockFace.WEST).getType()!=frame) nearestLocation.add(0.5,0,0);
 			if (nearestLocation.getBlock().getRelative(BlockFace.NORTH).getType()!=frame) nearestLocation.add(0,0,0.5);
-			event.setZaxis(isZAxis(loc));
+			event.setZAxis(isZAxis(loc));
 			return nearestLocation;
 		}
 		
 		boolean zAxis = isZAxis(loc);
-		event.setZaxis(zAxis);
+		event.setZAxis(zAxis);
 		
 		boolean foundLocation = false;
 
@@ -976,11 +977,14 @@ public class CustomPortal {
 			Bukkit.getServer().getPluginManager().callEvent(tpEvent);
 			if (!tpEvent.isCancelled()) {
 				if (event.getBuildLocation()!=null) buildPortal(event);
-				teleportLocation = teleportLocation.add(0,(event.getBuildLocation()!=null ? 1:0),(event.getBuildLocation()!=null && event.getZaxis()?0.5:-0.25));
+				teleportLocation = teleportLocation.add(0,(event.getBuildLocation()!=null ? 1:0),0);
 				
 				CompletePortal compl = portalClass.getPortalAtLocation(teleportLocation);
 				if (compl!=null) {
 					compl.addToHold(p, true);
+					Vector temp = teleportLocation.getDirection();
+					teleportLocation = compl.getCenterBottomLocation();
+					teleportLocation.setDirection(temp);
 				} else {
 					portalClass.removeFromHold(p);
 				}
@@ -1062,7 +1066,7 @@ public class CustomPortal {
 		
 		if (event.getBuildExitPortal()) {
 
-			boolean zAxis = event.getZaxis();
+			boolean zAxis = event.isZAxis();
 			
 			ArrayList<PortalFrame> completeFrames = new ArrayList<PortalFrame>();
 			CompletePortal complete = new CompletePortal(this, isPortal(teleportLocation, true, false),zAxis);
