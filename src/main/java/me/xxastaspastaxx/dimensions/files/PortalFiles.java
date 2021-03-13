@@ -69,6 +69,9 @@ public class PortalFiles implements Listener {
 		portalSettings.addDefault("NetherPortalEffect", true);
 		portalSettings.addDefault("ShowPortalContent", true);
 		if (portalSettings.getStringList("PathRules").isEmpty()) portalSettings.addDefault("PathRules", new ArrayList<String>());
+		portalSettings.addDefault("DimensionsMode", "PLAYER_HISTORY");
+		portalSettings.addDefault("UnlinkPortalsAfter", 3600000L);
+		portalSettings.addDefault("ReplacePortalRuins", "FULL");
 		
 		portalSettings.options().copyDefaults(true);
   	  	

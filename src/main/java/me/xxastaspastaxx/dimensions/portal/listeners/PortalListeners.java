@@ -86,7 +86,7 @@ public class PortalListeners implements Listener {
         	//if (e.getItem() == null) return;
         	Block block = e.getClickedBlock().getRelative(e.getBlockFace());
         	if (!portalClass.isPortalAtLocation(block.getLocation())) {
-        		if (portalClass.lightPortal(block.getLocation(), IgniteCause.FLINT_AND_STEEL, e.getPlayer(), e.getItem())) {
+        		if (portalClass.lightPortal(block.getLocation(), IgniteCause.FLINT_AND_STEEL, e.getPlayer(), e.getItem(), false)) {
 					e.setCancelled(true);
 					if (DimensionsSettings.consumeItems() && e.getPlayer().getGameMode()!=GameMode.CREATIVE) {
 						ItemStack item = e.getItem();

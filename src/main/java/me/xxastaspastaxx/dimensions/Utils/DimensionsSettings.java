@@ -27,6 +27,10 @@ public class DimensionsSettings {
 	private static boolean netherPortalEffect;
 	private static boolean showPortalContent;
 	private static HashMap<String, ArrayList<String>> pathRules = new HashMap<String, ArrayList<String>>();
+	private static DimensionsMode dimensionsMode;
+	private static long unlinkAfter;
+	private static ReplacePortalRuins replacePortalRuins;
+	private static float replacePortalRuinsAt = 0.9f;
 	
 	public static boolean reloadSettings() {
 		
@@ -57,6 +61,19 @@ public class DimensionsSettings {
   	  		String[] spl = str.split(";");
   	  		if (!pathRules.containsKey(spl[0])) continue;
   	  		pathRules.get(spl[0]).add(spl[1]);
+  	  	}
+  	  	
+  	  	dimensionsMode = DimensionsMode.valueOf(portalSettings.getString("DimensionsMode").toUpperCase());
+  	  	unlinkAfter = portalSettings.getLong("UnlinkPortalsAfter");
+  	  	
+  	  	if (DimensionsUtils.isFloat(portalSettings.getString("ReplacePortalRuins"))) {
+  	  		replacePortalRuinsAt = Float.parseFloat(portalSettings.getString("ReplacePortalRuins"));
+  	  		if (replacePortalRuinsAt==1)
+  	  			replacePortalRuins = ReplacePortalRuins.FULL;
+  	  		else 
+  	  	  		replacePortalRuins = ReplacePortalRuins.ANY;
+  	  	} else {
+  	  	  	replacePortalRuins = ReplacePortalRuins.valueOf(portalSettings.getString("ReplacePortalRuins").toUpperCase());
   	  	}
 		
 		return true;
@@ -120,6 +137,22 @@ public class DimensionsSettings {
 	
 	public static HashMap<String, ArrayList<String>> getPathRules() {
 		return pathRules;
+	}
+	
+	public static DimensionsMode getDimensionsMode() {
+		return dimensionsMode;
+	}
+	
+	public static long unlinkAfter() {
+		return unlinkAfter;
+	}
+	
+	public static ReplacePortalRuins replacePortalRuinsWhen() {
+		return replacePortalRuins;
+	}
+	
+	public static float replacePortalRuinsAt() {
+		return replacePortalRuinsAt;
 	}
 	
 }

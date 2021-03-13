@@ -36,9 +36,11 @@ import me.xxastaspastaxx.dimensions.events.CustomPortalIgniteEvent;
 import me.xxastaspastaxx.dimensions.events.DestroyCause;
 import me.xxastaspastaxx.dimensions.events.EntityTeleportCustomPortalEvent;
 import me.xxastaspastaxx.dimensions.events.EntityUseCustomPortalEvent;
+import me.xxastaspastaxx.dimensions.utils.DimensionsMode;
 import me.xxastaspastaxx.dimensions.utils.DimensionsSettings;
 import me.xxastaspastaxx.dimensions.utils.DimensionsUtils;
 import me.xxastaspastaxx.dimensions.utils.Messages;
+import me.xxastaspastaxx.dimensions.utils.ReplacePortalRuins;
 
 public class CustomPortal {
 	
@@ -604,7 +606,7 @@ public class CustomPortal {
 	}
 	
 	//Fill the center with he frame blocks
-	public boolean lightPortal(Location loc, IgniteCause cause, Entity igniter, boolean load, ItemStack lighter) {
+	public boolean lightPortal(Location loc, IgniteCause cause, Entity igniter, boolean load, ItemStack lighter, boolean force) {
 		List<Object> portal = isPortal(loc, true, load);
 		if (portal==null) return false;
 		
@@ -648,9 +650,9 @@ public class CustomPortal {
 		}
 		complete.setFrames(completeFrames);
 			
-		CustomPortalIgniteEvent event = new CustomPortalIgniteEvent(complete, cause, igniter, load, lighter);
+		CustomPortalIgniteEvent event = new CustomPortalIgniteEvent(complete, cause, igniter, load, lighter, force);
 		Bukkit.getServer().getPluginManager().callEvent(event);
-		if (lighter.getType()!=this.lighter) event.setCancelled(true);
+		if (!force && (lighter==null || lighter.getType()!=getLighter())) event.setCancelled(true);
 		if (!event.isCancelled()) {
 			
 			for (PortalFrame frame : complete.getFrames()) {
@@ -798,16 +800,14 @@ public class CustomPortal {
 		
 		boolean foundLocation = false;
 
-		Location tempLoc = spiralSearch(teleportLocation, zAxis,true);
-		if (tempLoc==null) spiralSearch(teleportLocation, zAxis,false);
+		Location tempLoc = spiralSearch(teleportLocation, zAxis, event);
 		if (tempLoc!=null) {
 			teleportLocation =  tempLoc;
 			foundLocation = true;
 		} else {
 			while (!foundLocation && teleportLocation.getY()<teleportLocation.getWorld().getHighestBlockYAt(teleportLocation)) {
 				while (!DimensionsUtils.isAir(teleportLocation.getBlock().getRelative(BlockFace.UP).getType()) && teleportLocation.getY()<teleportLocation.getWorld().getHighestBlockYAt(teleportLocation)) teleportLocation.add(0,1,0);
-				tempLoc = spiralSearch(teleportLocation, zAxis, true);
-				if (tempLoc==null) spiralSearch(teleportLocation, zAxis,false);
+				tempLoc = spiralSearch(teleportLocation, zAxis, event);
 				if (tempLoc!=null) {
 					teleportLocation =  tempLoc;
 					foundLocation = true;
@@ -819,8 +819,7 @@ public class CustomPortal {
 		
 		if (!foundLocation) {
 			while (DimensionsUtils.isAir(teleportLocation.getBlock().getRelative(BlockFace.DOWN).getType()) && teleportLocation.getY()>=1) teleportLocation.add(0,-1,0);
-			tempLoc = spiralSearch(teleportLocation, zAxis,true);
-			if (tempLoc==null) spiralSearch(teleportLocation, zAxis,false);
+			tempLoc = spiralSearch(teleportLocation, zAxis, event);
 			if (tempLoc!=null) {
 				teleportLocation =  tempLoc;
 				foundLocation = true;
@@ -845,8 +844,10 @@ public class CustomPortal {
 		return teleportLocation;
 	}
 
-	public Location spiralSearch(Location teleportLocation, boolean zAxis,boolean checkPlatform) {
+	public Location spiralSearch(Location teleportLocation, boolean zAxis, EntityUseCustomPortalEvent event) {
 	    int size=DimensionsSettings.getSpotSearchRadius();
+	    Location tempLocation1 = null;
+	    Location tempLocation2 = null;
 	    for (int siz = 4;siz<=size;siz++) {
 			for (int y=-siz+3;y<=siz-3;y++) {
 				for (int sz=1;sz<=siz;sz++) {
@@ -865,9 +866,16 @@ public class CustomPortal {
 				            	Location blockLocation = new Location(teleportLocation.getWorld(),teleportLocation.getX()+x,teleportLocation.getY()+y,teleportLocation.getZ()+z);
 
 								try {
-									if (canBuildPortal(blockLocation, zAxis,checkPlatform)) {
-										return blockLocation;
-									}
+									if (DimensionsSettings.replacePortalRuinsWhen()!=ReplacePortalRuins.NONE) {
+										if (canBuildPortal(blockLocation, zAxis,false, true)) return blockLocation.add(0,0,zAxis?-1:0);
+										if (canBuildPortal(blockLocation, !zAxis,false, true)) {
+											event.setZAxis(!zAxis);
+											return blockLocation.add(0,0,zAxis?-1:0);
+										}
+										if (tempLocation1==null && canBuildPortal(blockLocation, zAxis,true, false)) tempLocation1 = blockLocation;
+									} else if (canBuildPortal(blockLocation, zAxis,true, false)) return blockLocation;
+									
+									if (tempLocation2==null && tempLocation1==null && canBuildPortal(blockLocation, zAxis,false, false)) tempLocation2 = blockLocation;
 								} catch (NullPointerException e) {
 									
 								}
@@ -888,50 +896,102 @@ public class CustomPortal {
 		    }
 	    }
 
-	    return null;
+	    return tempLocation1!=null?tempLocation1:tempLocation2;
 	}
 	
-	public boolean canBuildPortal(Location loc, boolean zAxis, boolean checkPlatform) {
+	public boolean canBuildPortal(Location loc, boolean zAxis, boolean checkPlatform, boolean checkForRuins) {
 		if (isWorldNeeded() && loc.getWorld().equals(getWorld()) && loc.getY()+4>getWorldHeight()) return false;
-
+		
+		
 		if (getBuildExitPortal()) {
-			if (!getSpawnOnAir()) {
+			ReplacePortalRuins replaceWhen = DimensionsSettings.replacePortalRuinsWhen();
+			float minReplace = DimensionsSettings.replacePortalRuinsAt();
+			
+			if (!getSpawnOnAir() && !checkForRuins) {
 				for (int i=-1;i<3;i++) {
-					if (!loc.getBlock().getRelative(BlockFace.DOWN).getRelative(!zAxis ? BlockFace.WEST : BlockFace.SOUTH,i).getType().isSolid())
+					Block block = loc.getBlock().getRelative(BlockFace.DOWN).getRelative(!zAxis ? BlockFace.WEST : BlockFace.SOUTH,i);
+					if (!block.getType().isSolid())
 						return false;
 				}
 			}
 
 			if (!isHorizontal()) {
-				if (checkPlatform) {
-					for (int i=-1;i<2;i+=2) {
-						if (!loc.getBlock().getRelative(BlockFace.DOWN).getRelative(zAxis ? BlockFace.WEST : BlockFace.SOUTH,i).getType().isSolid() ||
-							!loc.getBlock().getRelative(BlockFace.DOWN).getRelative(!zAxis ? BlockFace.WEST : BlockFace.SOUTH).getRelative(zAxis ? BlockFace.WEST : BlockFace.SOUTH,i).getType().isSolid())
-							return false;
+				if (checkForRuins) {
+					int full = 0;
+					for (int i=0;i<5;i++) {
+						Block block1 = loc.getBlock().getRelative(BlockFace.UP,i).getRelative(!zAxis ? BlockFace.EAST : BlockFace.NORTH);
+						Block block2 = loc.getBlock().getRelative(BlockFace.UP,i).getRelative(!zAxis ? BlockFace.WEST : BlockFace.SOUTH,2);
+						Block block3 = loc.getBlock().getRelative(BlockFace.UP,i).getRelative(!zAxis ? BlockFace.WEST : BlockFace.SOUTH);
+						Block block4 = loc.getBlock().getRelative(BlockFace.UP,i);
+
+						boolean isBlock1 = isPortalBlock(block1);
+						boolean isBlock2 = isPortalBlock(block2);
+						boolean isBlock3 = !(i==0 || i==4) || isPortalBlock(block3);
+						boolean isBlock4 = !(i==0 || i==4) || isPortalBlock(block4);
+						
+
+						if (replaceWhen==ReplacePortalRuins.ANY) {
+							if ((isBadBlock(block1.getType()) && !isBlock1) ||
+									(isBadBlock(block2.getType()) && !isBlock2) ||
+									(isBadBlock(block3.getType()) && !isBlock3) ||
+									(isBadBlock(block4.getType()) && !isBlock4))
+										return false;
+						}
+
+						if (isBlock1) full++;
+						if (isBlock2) full++;
+						if (isBlock3) full++;
+						if (isBlock4) full++;
+						if (replaceWhen==ReplacePortalRuins.FULL && full!=(i+1)*4) return false;
 					}
-				}
-				
-				for (int i=0;i<4;i++) {
-					if ((isBadBlock(loc.getBlock().getRelative(BlockFace.UP,i).getRelative(!zAxis ? BlockFace.EAST : BlockFace.NORTH).getType())) ||
-						(isBadBlock(loc.getBlock().getRelative(BlockFace.UP,i).getRelative(!zAxis ? BlockFace.WEST : BlockFace.SOUTH,2).getType())) ||
-						(isBadBlock(loc.getBlock().getRelative(BlockFace.UP,i).getRelative(!zAxis ? BlockFace.WEST : BlockFace.SOUTH).getType())) ||
-						(isBadBlock(loc.getBlock().getRelative(BlockFace.UP,i).getType())))
-							return false;
-				}
-			} else {
-				if (checkPlatform) {
-					for (int i=-3;i<4;i++) {
-						for (int i2=-3;i2<4;i2++) {
-							if (!loc.getBlock().getRelative(BlockFace.DOWN).getRelative(BlockFace.EAST, i).getRelative(BlockFace.SOUTH, i2).getType().isSolid())
+
+					if ((replaceWhen==ReplacePortalRuins.FULL && full!=20) || (replaceWhen==ReplacePortalRuins.ANY && full<20*minReplace)) return false;
+				} else {
+					if (checkPlatform) {
+						for (int i=-1;i<2;i+=2) {
+							if (!loc.getBlock().getRelative(BlockFace.DOWN).getRelative(zAxis ? BlockFace.WEST : BlockFace.SOUTH,i).getType().isSolid() ||
+								!loc.getBlock().getRelative(BlockFace.DOWN).getRelative(!zAxis ? BlockFace.WEST : BlockFace.SOUTH).getRelative(zAxis ? BlockFace.WEST : BlockFace.SOUTH,i).getType().isSolid())
 								return false;
 						}
 					}
+					
+					for (int i=0;i<4;i++) {
+						if ((isBadBlock(loc.getBlock().getRelative(BlockFace.UP,i).getRelative(!zAxis ? BlockFace.EAST : BlockFace.NORTH).getType())) ||
+							(isBadBlock(loc.getBlock().getRelative(BlockFace.UP,i).getRelative(!zAxis ? BlockFace.WEST : BlockFace.SOUTH,2).getType())) ||
+							(isBadBlock(loc.getBlock().getRelative(BlockFace.UP,i).getRelative(!zAxis ? BlockFace.WEST : BlockFace.SOUTH).getType())) ||
+							(isBadBlock(loc.getBlock().getRelative(BlockFace.UP,i).getType())))
+								return false;
+					}
 				}
-				
-				for (int i=-2;i<3;i++) {
-					for (int i2=-2;i2<3;i2++) {
-						if ((isBadBlock(loc.getBlock().getRelative(BlockFace.EAST, i).getRelative(BlockFace.SOUTH, i2).getType())))
-							return false;
+			} else {
+				if (checkForRuins) {
+
+					int full = 0;
+					for (int i=-2;i<3;i++) {
+						for (int i2=-2;i2<3;i2++) {
+							Block block = loc.getBlock().getRelative(BlockFace.EAST, i).getRelative(BlockFace.SOUTH, i2);
+							boolean isBlock = !(i==-2 || i==2 || i2==2 || i2==2) || isPortalBlock(block);
+							if ((replaceWhen==ReplacePortalRuins.FULL && !isBlock) || (replaceWhen==ReplacePortalRuins.ANY && isBadBlock(block.getType()) && !isBlock))
+								return false;
+							if (isBlock) full++;
+						}
+					}
+					if ((replaceWhen==ReplacePortalRuins.FULL && full!=25) || (replaceWhen==ReplacePortalRuins.ANY && full<25*minReplace)) return false;
+				} else {
+					if (checkPlatform) {
+						for (int i=-3;i<4;i++) {
+							for (int i2=-3;i2<4;i2++) {
+								if (!loc.getBlock().getRelative(BlockFace.DOWN).getRelative(BlockFace.EAST, i).getRelative(BlockFace.SOUTH, i2).getType().isSolid())
+									return false;
+							}
+						}
+					}
+					
+					for (int i=-2;i<3;i++) {
+						for (int i2=-2;i2<3;i2++) {
+							if ((isBadBlock(loc.getBlock().getRelative(BlockFace.EAST, i).getRelative(BlockFace.SOUTH, i2).getType())))
+								return false;
+						}
 					}
 				}
 			}
@@ -970,6 +1030,7 @@ public class CustomPortal {
 			if (isWorldNeeded() && startLocation.getWorld().equals(getWorld()) && startLocation.getY()>getWorldHeight()) startLocation.setY(getWorldHeight()-5);
 			event.setLocation(startLocation);
 			Location teleportLocation = null;
+			if (DimensionsSettings.getDimensionsMode()==DimensionsMode.LINKED_PORTALS) teleportLocation = complete.getLinkedPortal()!=null?complete.getLinkedPortal().getLocation():null;
 			if (teleportLocation==null) teleportLocation = calculateTeleportLocation(p, event);
 			teleportLocation.setDirection(p.getLocation().getDirection());
 			EntityTeleportCustomPortalEvent tpEvent = new EntityTeleportCustomPortalEvent(event,teleportLocation,p.getLocation());
@@ -980,11 +1041,14 @@ public class CustomPortal {
 				teleportLocation = teleportLocation.add(0,(event.getBuildLocation()!=null ? 1:0),0);
 				
 				CompletePortal compl = portalClass.getPortalAtLocation(teleportLocation);
+				
 				if (compl!=null) {
 					compl.addToHold(p, true);
 					Vector temp = teleportLocation.getDirection();
 					teleportLocation = compl.getCenterBottomLocation();
 					teleportLocation.setDirection(temp);
+					
+					complete.linkPortal(compl);
 				} else {
 					portalClass.removeFromHold(p);
 				}
@@ -1034,8 +1098,6 @@ public class CustomPortal {
 	}
 
 	public World getReturnWorld(Entity p, World from, boolean update, boolean useDefaultWorld) {
-		if (!isWorldNeeded()) return DimensionsSettings.getDefaultWorld();
-		
 		ArrayList<World> history = useHistory.get(p.getUniqueId());
 		
 		World world = useDefaultWorld ? DimensionsSettings.getDefaultWorld() : getWorld();
@@ -1119,6 +1181,7 @@ public class CustomPortal {
 				frame.summon(null);
 			}
 			complete.setFrames(completeFrames);
+			complete.linkPortal(event.getPortal());
 			portalClass.addPortal(complete);
 		} else {
 			

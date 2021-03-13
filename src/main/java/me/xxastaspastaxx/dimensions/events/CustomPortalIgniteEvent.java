@@ -18,15 +18,17 @@ public class CustomPortalIgniteEvent extends Event implements Cancellable {
     private IgniteCause cause;
     private Entity entity;
     private boolean load;
+    private boolean force;
     
     ItemStack lighter;
     
-    public CustomPortalIgniteEvent(CompletePortal complete, IgniteCause cause, Entity entity, boolean load, ItemStack lighter) {
+    public CustomPortalIgniteEvent(CompletePortal complete, IgniteCause cause, Entity entity, boolean load, ItemStack lighter, boolean force) {
     	this.complete=complete;
     	this.cause = cause;
     	this.entity = entity;
     	this.load = load;
     	this.lighter = lighter;
+    	this.force = force;
     }
     
     public CompletePortal getPortal() {
@@ -51,6 +53,14 @@ public class CustomPortalIgniteEvent extends Event implements Cancellable {
     
     public boolean isCancelled() {
         return cancelled;
+    }
+
+    public void setFroced(boolean forced) {
+        force = forced;
+    }
+    
+    public boolean isForced() {
+        return force;
     }
 
     public void setCancelled(boolean cancel) {

@@ -160,7 +160,7 @@ public class PortalClass {
 	}
 	
 	//Check if any of the saved portals can be lit in this location
-	public boolean lightPortal(Location loc, IgniteCause cause, LivingEntity entity, ItemStack lighter) {
+	public boolean lightPortal(Location loc, IgniteCause cause, LivingEntity entity, ItemStack lighter, boolean force) {
 		
 		if (isPortalAtLocation(loc)) return false;
 		
@@ -174,7 +174,7 @@ public class PortalClass {
 
 		for (CustomPortal portal : portals) {
 			if (!portal.isEnabled()) continue; 
-			if (portal.lightPortal(loc, cause, entity, false,lighter)) {
+			if (portal.lightPortal(loc, cause, entity, false,lighter, force)) {
 				debug("Portal lit at "+loc,2);
 				return true;
 			}

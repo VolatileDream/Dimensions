@@ -22,6 +22,7 @@ import com.comphenix.protocol.utility.MinecraftReflection;
 import me.xxastaspastaxx.dimensions.Dimensions;
 import me.xxastaspastaxx.dimensions.events.EntityStartedViewingCustomPortalEvent;
 import me.xxastaspastaxx.dimensions.events.EntityStoppedViewingCustomPortalEvent;
+import me.xxastaspastaxx.dimensions.utils.DimensionsSettings;
 
 public class CompletePortal {
 
@@ -33,6 +34,9 @@ public class CompletePortal {
 	private int combinedId = 0;
 	
 	private BlockData netherBlockData;
+	
+	private CompletePortal linkedPortal;
+	private long linkedAt;
 	
 	/*******************************************************************************/
 	
@@ -46,6 +50,8 @@ public class CompletePortal {
 	private ArrayList<Entity> shown = new ArrayList<Entity>();
 
 	private HashMap<String, Object> tags = new HashMap<String, Object>();
+	
+	private boolean destroyed = false;
 	
 	boolean isEntity = false;
 	
@@ -63,6 +69,7 @@ public class CompletePortal {
 	public CompletePortal(CustomPortal portal, boolean zAxis) {
 		this.portal = portal;
 		this.zAxis = zAxis;
+		linkedAt = System.currentTimeMillis();
 		setup();
 		
 	}
@@ -133,6 +140,7 @@ public class CompletePortal {
 		}
 		hold.clear();
 		portal.portalClass.removeCompletePortal(this, remove);
+		if (remove) destroyed = true;
 		return true;
 	}
 	
@@ -154,6 +162,25 @@ public class CompletePortal {
 	
 	public BlockData getNetherBlockData() {
 		return netherBlockData;
+	}
+	
+	public CompletePortal getLinkedPortal() {
+		if (System.currentTimeMillis()-linkedAt>DimensionsSettings.unlinkAfter() || (linkedPortal!=null && !linkedPortal.isActive())) {
+			linkedPortal = null;
+		} else {
+			linkedAt = System.currentTimeMillis();
+		}
+		
+		return linkedPortal;
+	}
+	
+	public void linkPortal(CompletePortal other) {
+		linkedPortal = other;
+		linkedAt = System.currentTimeMillis();
+	}
+	
+	public boolean isActive() {
+		return !destroyed;
 	}
 	
 	public String toString() {
